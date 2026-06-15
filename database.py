@@ -2,7 +2,9 @@ import sqlite3
 import os
 from contextlib import contextmanager
 
-DATABASE_PATH = os.environ.get('DATABASE_PATH', 'library.db')
+def get_database_path():
+    """Get the database path from environment variable or use default."""
+    return os.environ.get('DATABASE_PATH', 'library.db')
 
 @contextmanager
 def get_db_connection():
@@ -13,11 +15,13 @@ def get_db_connection():
 
     The connection is automatically closed when exiting the context.
     """
-    conn = sqlite3.connect(DATABASE_PATH)
+    conn = sqlite3.connect(get_database_path())
     conn.row_factory = sqlite3.Row
+    print(f"[DEBUG] get_db_connection() opened connection {id(conn)} to {get_database_path()}")  # Debug
     try:
         yield conn
     finally:
+        print(f"[DEBUG] get_db_connection() closing connection {id(conn)}")  # Debug
         conn.close()
 
 def init_db():
@@ -29,10 +33,14 @@ def init_db():
     Raises:
         sqlite3.Error: If an error occurs during database initialization.
     """
-    conn = sqlite3.connect(DATABASE_PATH)
+    db_path = get_database_path()
+    print(f"[DEBUG] init_db() connecting to {db_path}")  # Debug
+    conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
+    print(f"[DEBUG] init_db() connection established")  # Debug
     try:
         cursor = conn.cursor()
+        print(f"[DEBUG] init_db() creating students table")  # Debug
         # Students table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS students (
@@ -43,6 +51,7 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+        print(f"[DEBUG] init_db() students table created")  # Debug
         # Resources table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS resources (
@@ -83,8 +92,12 @@ def init_db():
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+        print(f"[DEBUG] init_db() committing transaction")  # Debug
         conn.commit()
-    except Exception:
+        print(f"[DEBUG] init_db() transaction committed")  # Debug
+    except Exception as e:
+        print(f"[DEBUG] init_db() exception: {e}")  # Debug
         conn.close()
         raise
+    print(f"[DEBUG] init_db() returning connection")  # Debug
     return conn

@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Paneli — Kütüphane</title>
+<!--
+  NOT / NOTLAR:
+  - Basılı Kaynak Ekle → "Diğer" ve "Etiket Ekle" seçenekleri kaldırıldı.
+    Bunların yerine her iki formda da serbest metin girişi (textbox) eklendi.
+  - Textbox'a yazılan değerler virgülle ayrılırsa her biri ayrı tag olarak işlenir.
+    Örnek: "Kimya, 9. Sınıf, Olimpiyat" → 3 ayrı tag eklenir.
+  - Eklenen custom tag'ler, mevcut tag listesine checkbox olarak eklenir ve
+    otomatik olarak seçili (checked) gelir.
+  - Dijital Kaynak Ekle → "+ Etiket Ekle" checkbox'ı kaldırıldı, aynı textbox mantığı uygulandı.
+-->
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #f0f4f8;
+    color: #1a2332;
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #1a2332;
+    color: #fff;
+    padding: 12px 22px;
+    border-radius: 10px;
+    margin-bottom: 22px;
+  }
+  .top-bar h1 { font-size: 1rem; font-weight: 700; letter-spacing: 0.04em; }
+  .top-bar .meta { font-size: 0.78rem; color: #94a3b8; }
+  .top-bar a {
+    color: #60a5fa;
+    font-size: 0.8rem;
+    text-decoration: none;
+    border: 1px solid #334155;
+    padding: 5px 12px;
+    border-radius: 5px;
+    transition: background 0.15s;
+  }
+  .top-bar a:hover { background: #334155; }
+
+  .admin-grid {
+    display: grid;
+    grid-template-columns: 220px 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 18px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .sidebar { grid-column: 1; grid-row: 1; }
+  .add-basili { grid-column: 2; grid-row: 1; }
+  .add-dijital { grid-column: 3; grid-row: 1; }
+  .activity { grid-column: 1 / 4; grid-row: 2; }
+
+  .panel {
+    background: #ffffff;
+    border: 1.5px solid #c9d6e3;
+    border-radius: 10px;
+    padding: 20px 22px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+
+  .panel h2 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #1a2332;
+    margin-bottom: 16px;
+    border-bottom: 1.5px solid #e8eef5;
+    padding-bottom: 10px;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar-info p {
+    font-size: 0.78rem;
+    color: #374151;
+    margin-bottom: 10px;
+    padding: 8px 10px;
+    background: #f8fafc;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    word-break: break-all;
+  }
+  .sidebar-info p strong { display: block; font-size: 0.7rem; color: #6b7f96; margin-bottom: 2px; }
+
+  .sidebar-section { margin-top: 16px; }
+  .sidebar-section h3 {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #6b7f96;
+    margin-bottom: 10px;
+  }
+
+  .upload-zone {
+    border: 2px dashed #c9d6e3;
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    background: #f8fafc;
+  }
+  .upload-zone:hover { border-color: #3b82f6; background: #eff6ff; }
+  .upload-zone .icon { font-size: 1.8rem; margin-bottom: 6px; }
+  .upload-zone p { font-size: 0.75rem; color: #6b7f96; }
+
+  .btn {
+    display: inline-block;
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 600;
+    transition: opacity 0.15s, transform 0.1s;
+    width: 100%;
+    text-align: center;
+    margin-top: 8px;
+  }
+  .btn:hover { opacity: 0.85; transform: translateY(-1px); }
+  .btn-primary { background: #3b82f6; color: #fff; }
+  .btn-red     { background: #ef4444; color: #fff; }
+  .btn-green   { background: #22c55e; color: #fff; }
+  .btn-gray    { background: #e2e8f0; color: #374151; }
+
+  /* ── FORM ── */
+  .form-row { margin-bottom: 10px; }
+  .form-row label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #6b7f96;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 4px;
+  }
+  .form-row input[type=text],
+  .form-row select {
+    width: 100%;
+    border: 1.5px solid #c9d6e3;
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: 0.83rem;
+    background: #f8fafc;
+    color: #1a2332;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .form-row input:focus, .form-row select:focus {
+    border-color: #3b82f6;
+    background: #fff;
+  }
+
+  .lang-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .lang-row label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #374151;
+    cursor: pointer;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .lang-row input[type=radio] { accent-color: #3b82f6; }
+
+  .tag-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .tag-check {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px;
+    border-radius: 20px;
+    border: 1.5px solid #c9d6e3;
+    font-size: 0.75rem;
+    cursor: pointer;
+    color: #374151;
+    background: #f8fafc;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .tag-check:hover { border-color: #3b82f6; color: #3b82f6; }
+  .tag-check input { accent-color: #3b82f6; }
+
+  /* Özel tag — eklenen custom taglar biraz farklı gösterilir */
+  .tag-check.custom-tag {
+    border-color: #a5b4fc;
+    background: #eef2ff;
+    color: #3730a3;
+  }
+
+  /* Tag textbox + buton satırı */
+  .tag-add-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+    align-items: center;
+  }
+  .tag-add-row input[type=text] {
+    flex: 1;
+    border: 1.5px solid #c9d6e3;
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 0.78rem;
+    background: #f8fafc;
+    outline: none;
+    color: #1a2332;
+    transition: border-color 0.15s;
+  }
+  .tag-add-row input[type=text]:focus { border-color: #3b82f6; background: #fff; }
+  .tag-add-row input[type=text]::placeholder { color: #9aacbe; }
+  .tag-add-row button {
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: none;
+    background: #3b82f6;
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.15s;
+  }
+  .tag-add-row button:hover { opacity: 0.85; }
+
+  .tag-hint {
+    font-size: 0.7rem;
+    color: #9aacbe;
+    margin-top: 4px;
+  }
+
+  /* ── UPLOAD FILE AREA ── */
+  .upload-box {
+    border: 2px dashed #c9d6e3;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    background: #f8fafc;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .upload-box:hover { border-color: #3b82f6; background: #eff6ff; }
+  .upload-box .icon { font-size: 2rem; color: #3b82f6; margin-bottom: 6px; }
+  .upload-box p { font-size: 0.78rem; color: #6b7f96; }
+
+  .file-list {
+    margin-top: 10px;
+    font-size: 0.78rem;
+    color: #374151;
+    list-style: none;
+  }
+  .file-list li {
+    padding: 4px 0;
+    border-bottom: 1px solid #f0f4f8;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* ── ACTIVITY TABLE ── */
+  .activity-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+  }
+  .activity-table th {
+    background: #f0f4f8;
+    color: #6b7f96;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1.5px solid #c9d6e3;
+  }
+  .activity-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #edf2f7;
+    color: #374151;
+    vertical-align: middle;
+  }
+  .activity-table tr:last-child td { border-bottom: none; }
+  .activity-table tr:hover td { background: #f8fafc; }
+
+  .badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 700;
+  }
+  .badge-blue   { background: #dbeafe; color: #1d4ed8; }
+  .badge-green  { background: #dcfce7; color: #166534; }
+  .badge-red    { background: #fee2e2; color: #991b1b; }
+
+  .sep { border: none; border-top: 1.5px solid #e8eef5; margin: 14px 0; }
+
+  @media (max-width: 900px) {
+    .admin-grid { grid-template-columns: 1fr 1fr; }
+    .sidebar { grid-column: 1 / 3; }
+    .add-basili { grid-column: 1; }
+    .add-dijital { grid-column: 2; }
+    .activity { grid-column: 1 / 3; }
+  }
+  @media (max-width: 600px) {
+    .admin-grid { grid-template-columns: 1fr; }
+    .sidebar, .add-basili, .add-dijital, .activity { grid-column: 1; }
+  }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div>
+    <h1>🛠 Admin Paneli</h1>
+    <div class="meta">Kütüphane Yönetim Sistemi</div>
+  </div>
+  <a href="index.html">← Ana Sayfaya Dön</a>
+</div>
+
+<div class="admin-grid">
+
+  <!-- ══════════════════════════════════
+       SIDEBAR — IP, Öğrenci Yükle, DB
+       ══════════════════════════════════ -->
+  <div class="panel sidebar">
+    <h2>Sistem Bilgisi</h2>
+
+    <div class="sidebar-info">
+      <p><strong>IP Adresi</strong>http://192.168.x.x</p>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>Öğrenci Listesi Yükle</h3>
+      <div class="upload-zone" onclick="document.getElementById('studentFile').click()">
+        <div class="icon">⬆️</div>
+        <p>Dosya seçmek için tıklayın</p>
+        <input type="file" id="studentFile" style="display:none" accept=".csv,.xlsx,.xls">
+      </div>
+      <button class="btn btn-primary" onclick="uploadStudents()">Yükle</button>
+    </div>
+
+    <div class="sep"></div>
+
+    <div class="sidebar-section">
+      <h3>Veri Tabanı</h3>
+      <button class="btn btn-gray" onclick="exportDB()">📤 Veri Tabanını Dışa Aktar</button>
+      <button class="btn btn-gray" onclick="importDB()">📥 Veri Tabanını Yükle</button>
+    </div>
+
+  </div>
+
+
+  <!-- ══════════════════════════════════
+       ADD BASILI KAYNAK
+       ══════════════════════════════════
+       NOT: "Diğer" tag checkbox'ı kaldırıldı.
+       Yerine serbest textbox eklendi.
+       Virgülle ayrılmış değerler ayrı tag olarak eklenir.
+       ══════════════════════════════════ -->
+  <div class="panel add-basili">
+    <h2>Basılı Kaynak Ekle</h2>
+
+    <div class="form-row">
+      <label>Ad</label>
+      <input type="text" placeholder="Kaynak adı" id="bAd" />
+    </div>
+    <div class="form-row">
+      <label>Yazar</label>
+      <input type="text" placeholder="Yazar adı" id="bYazar" />
+    </div>
+    <div class="form-row">
+      <label>Dil</label>
+      <div class="lang-row">
+        <label><input type="radio" name="bDil" value="TR" checked> TR</label>
+        <label><input type="radio" name="bDil" value="EN"> EN</label>
+        <label><input type="radio" name="bDil" value="DE"> DE</label>
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Raf Yeri</label>
+      <input type="text" placeholder="A-12" id="bRaf" />
+    </div>
+    <div class="form-row">
+      <label>UUID</label>
+      <input type="text" placeholder="Otomatik oluşturulur" id="bUUID" />
+    </div>
+
+    <div class="form-row">
+      <label>Etiketler (Tag)</label>
+      <div class="tag-grid" id="bTagGrid">
+        <label class="tag-check"><input type="checkbox"> 📖 Okuma Kitabı</label>
+        <label class="tag-check"><input type="checkbox"> 🎓 Akademik</label>
+        <label class="tag-check"><input type="checkbox" checked> ⚗️ Fizik</label>
+        <label class="tag-check"><input type="checkbox"> 📐 Matematik</label>
+        <label class="tag-check"><input type="checkbox"> 🔤 Kince</label>
+        <label class="tag-check"><input type="checkbox"> 📅 Edebiyat Tarihi</label>
+      </div>
+      <!-- Serbest tag girişi: virgülle ayırarak birden fazla tag eklenebilir -->
+      <div class="tag-add-row">
+        <input type="text" id="bCustomTag" placeholder="Yeni tag... (virgülle ayır: Kimya, 9. Sınıf)" />
+        <button onclick="addCustomTags('bTagGrid', 'bCustomTag')">+ Ekle</button>
+      </div>
+      <div class="tag-hint">Birden fazla tag için virgülle ayırın: "Kimya, 9. Sınıf, Olimpiyat"</div>
+    </div>
+
+    <div class="sep"></div>
+    <button class="btn btn-primary" onclick="saveBasili()">💾 Kaydet</button>
+  </div>
+
+
+  <!-- ══════════════════════════════════
+       ADD DİJİTAL KAYNAK
+       ══════════════════════════════════
+       NOT: "+ Etiket Ekle" checkbox'ı kaldırıldı.
+       Yerine aynı serbest textbox mantığı uygulandı.
+       Virgülle ayrılmış değerler ayrı tag olarak eklenir.
+       ══════════════════════════════════ -->
+  <div class="panel add-dijital">
+    <h2>Dijital Kaynak Ekle</h2>
+
+    <div class="upload-box" onclick="document.getElementById('dijFile').click()">
+      <div class="icon">⬆️</div>
+      <p>Dosya yüklemek için tıklayın</p>
+      <input type="file" id="dijFile" style="display:none" multiple onchange="showFiles(this)">
+    </div>
+    <ul class="file-list" id="fileList"></ul>
+
+    <div class="sep"></div>
+
+    <div class="form-row">
+      <label>Etiketler (Tag)</label>
+      <div class="tag-grid" id="dTagGrid">
+        <label class="tag-check"><input type="checkbox" checked> 🏆 Olimpiyat Matematik</label>
+        <label class="tag-check"><input type="checkbox"> 🌍 Almanca</label>
+        <label class="tag-check"><input type="checkbox"> 🏫 3. Sınıf</label>
+        <label class="tag-check"><input type="checkbox"> 🏫 10. Sınıf</label>
+      </div>
+      <!-- Serbest tag girişi -->
+      <div class="tag-add-row">
+        <input type="text" id="dCustomTag" placeholder="Yeni tag... (virgülle ayır: Biyoloji, 7. Sınıf)" />
+        <button onclick="addCustomTags('dTagGrid', 'dCustomTag')">+ Ekle</button>
+      </div>
+      <div class="tag-hint">Birden fazla tag için virgülle ayırın: "Biyoloji, 7. Sınıf, Olimpiyat"</div>
+    </div>
+
+    <div class="form-row" style="margin-top:8px;">
+      <label>Yüklenen Dosyalar</label>
+      <div id="uploadedNames" style="font-size:0.78rem;color:#6b7f96;margin-top:4px;min-height:20px;">
+        Henüz dosya seçilmedi.
+      </div>
+    </div>
+
+    <div class="sep"></div>
+    <button class="btn btn-green" onclick="saveDijital()">💾 Kaydet</button>
+  </div>
+
+
+  <!-- ══════════════════════════════════
+       BOX 4 — Sistem Aktiviteleri
+       ══════════════════════════════════ -->
+  <!-- ══════════════════════════════════════════════════════════════════════
+       BOX 4 — Kaynaklar
+       ════════════════════════════════════════════════════════════════════ -->
+  <div class="panel activity">
+    <h2>Kaynaklar</h2>
+
+    <!-- Search bar -->
+    <div class="search-bar">
+      <input type="text" placeholder="🔍 Ara..." id="searchInput" />
+      <button class="btn btn-primary" onclick="doSearch()">Ara</button>
+    </div>
+
+    <!-- Resources table -->
+    <table class="activity-table">
+      <thead>
+        <tr>
+          <th>Kaynak Adı</th>
+          <th>Yazar</th>
+          <th>Etiketler</th>
+          <th>Durum</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="resourcesTableBody">
+        <!-- Resources will be loaded here via AJAX -->
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  /*
+   * addCustomTags(gridId, inputId)
+   * Textbox'taki değeri virgülle ayırır, her bir parçayı trim eder,
+   * boş olmayanları tag-grid'e checked checkbox olarak ekler.
+   * Aynı tag zaten varsa tekrar eklemez.
+   */
+  function addCustomTags(gridId, inputId) {
+    const input = document.getElementById(inputId);
+    const grid  = document.getElementById(gridId);
+    const raw   = input.value.trim();
+    if (!raw) return;
+
+    const tags = raw.split(',').map(t => t.trim()).filter(t => t.length > 0);
+
+    tags.forEach(tagText => {
+      // Aynı isimde tag zaten var mı kontrol et
+      const existing = Array.from(grid.querySelectorAll('.tag-check'));
+      const duplicate = existing.some(el => el.textContent.trim().toLowerCase() === tagText.toLowerCase());
+      if (duplicate) return;
+
+      const label = document.createElement('label');
+      label.className = 'tag-check custom-tag';
+      label.innerHTML = `<input type="checkbox" checked> ${tagText}`;
+      grid.appendChild(label);
+    });
+
+    input.value = '';
+  }
+
+  // Enter tuşuyla da tag eklenebilsin
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      const active = document.activeElement;
+      if (active && active.id === 'bCustomTag') addCustomTags('bTagGrid', 'bCustomTag');
+      if (active && active.id === 'dCustomTag') addCustomTags('dTagGrid', 'dCustomTag');
+    }
+  });
+
+  // Load resources on page load
+  document.addEventListener('DOMContentLoaded', loadResources);
+
+  function loadResources() {
+    const resourcesTableBody = document.getElementById('resourcesTableBody');
+
+    // Show loading state
+    const loadingMessage = document.createElement('tr');
+    loadingMessage.innerHTML = '<td colspan="5">Kaynaklar yükleniyor...</td>';
+    loadingMessage.className = 'loading';
+    if (resourcesTableBody) {
+      resourcesTableBody.innerHTML = '';
+      resourcesTableBody.appendChild(loadingMessage);
+    }
+
+    // Fetch resources from API
+    fetch('/api/resources')
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          displayResources(data.resources);
+        } else {
+          showError('Kaynaklar yüklenirken bir hata oluştu.');
+        }
+      })
+      .catch(error => {
+        showError('Sunucuya bağlanılamadı. Lütfen daha sonra tekrar deneyin.');
+        console.error('Error:', error);
+      });
+  }
+
+  function displayResources(resources) {
+    const resourcesTableBody = document.getElementById('resourcesTableBody');
+    if (!resourcesTableBody) return;
+
+    resourcesTableBody.innerHTML = '';
+
+    if (resources.length === 0) {
+      const noDataRow = document.createElement('tr');
+      noDataRow.innerHTML = '<td colspan="5">Henüz kaynak eklenmedi.</td>';
+      resourcesTableBody.appendChild(noDataRow);
+      return;
+    }
+
+    resources.forEach(resource => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td><strong>${resource.title}</strong></td>
+        <td>${resource.author || '-'}</td>
+        <td>${resource.tags || '-'}</td>
+        <td><span class="status-badge ${resource.is_available ? 'status-active' : 'status-checked'}">
+            ${resource.is_available ? 'Aktif' : 'Ödünç Alındı'}
+          </span></td>
+        <td>
+          ${resource.file_path ? `<button class="btn-disa" onclick="downloadResource('${resource.file_path}')">Dışa Aktar</button>` : ''}
+        </td>
+      `;
+      resourcesTableBody.appendChild(row);
+    });
+  }
+
+  function showError(message) {
+    const resourcesTableBody = document.getElementById('resourcesTableBody');
+    if (resourcesTableBody) {
+      const errorRow = document.createElement('tr');
+      errorRow.innerHTML = `<td colspan="5" style="color: #991b1b;">${message}</td>`;
+      resourcesTableBody.innerHTML = '';
+      resourcesTableBody.appendChild(errorRow);
+    }
+  }
+
+  // Enhance the search functionality
+  function doSearch() {
+    const searchInput = document.getElementById('searchInput');
+    const query = searchInput.value.trim();
+
+    if (!query) {
+      loadResources(); // Load all if empty
+      return;
+    }
+
+    // Show loading
+    const resourcesTableBody = document.getElementById('resourcesTableBody');
+    if (resourcesTableBody) {
+      resourcesTableBody.innerHTML = '<tr><td colspan="5">Arama yapılıyor...</td></tr>';
+    }
+
+    // Search via API
+    fetch(`/api/resources/search?q=${encodeURIComponent(query)}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          displayResources(data.resources);
+        } else {
+          showError('Arama sırasında bir hata oluştu.');
+        }
+      })
+      .catch(error => {
+        showError('Sunucuya bağlanılamadı.');
+        console.error('Error:', error);
+      });
+  }
+
+  // Update the existing doSearch function to use AJAX
+  window.doSearch = doSearch;
+
+  // Also handle Enter key in search
+  document.getElementById('searchInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+      doSearch();
+    }
+  });
+
+  // AJAX functions for admin operations
+
+  function uploadStudents() {
+    const f = document.getElementById('studentFile').files[0];
+    if (!f) { alert('Lütfen bir dosya seçin.'); return; }
+
+    const formData = new FormData();
+    formData.append('file', f);
+
+    fetch('/api/students/upload', {
+      method: 'POST',
+      body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert('Öğrenci listesi yüklendi: ' + data.added + ' öğrenci eklendi, ' + data.updated + ' öğrenci güncellendi.');
+        document.getElementById('studentFile').value = '';
+      } else {
+        alert('Yükleme başarısız: ' + data.message);
+      }
+    })
+    .catch(error => {
+      alert('Bir hata oluştu: ' + error.message);
+      console.error('Error:', error);
+    });
+  }
+
+  function exportDB() {
+    fetch('/api/admin/export')
+      .then(response => {
+        if (response.ok) {
+          return response.blob();
+        } else {
+          return response.json().then(err => { throw new Error(err.message); });
+        }
+      })
+      .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = 'library.db';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        alert('Veri tabanı başarıyla dışa aktarıldı.');
+      })
+      .catch(error => {
+        alert('Dışa aktarma başarısız: ' + error.message);
+        console.error('Error:', error);
+      });
+  }
+
+  function importDB() {
+    const f = document.getElementById('importFile').files[0];
+    if (!f) { alert('Lütfen bir .db dosyası seçin.'); return; }
+    if (!f.name.endsWith('.db')) { alert('Lütfen bir .db dosyası seçin.'); return; }
+
+    const formData = new FormData();
+    formData.append('file', f);
+
+    fetch('/api/admin/import', {
+      method: 'POST',
+      body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert('Veri tabanı başarıyla yüklendi. Lütfen uygulamayı yeniden başlatın.');
+        document.getElementById('importFile').value = '';
+      } else {
+        alert('Yükleme başarısız: ' + data.message);
+      }
+    })
+    .catch(error => {
+      alert('Bir hata oluştu: ' + error.message);
+      console.error('Error:', error);
+    });
+  }
+
+  function saveBasili() {
+    const ad = document.getElementById('bAd').value.trim();
+    const yazar = document.getElementById('bYazar').value.trim();
+    const dil = document.querySelector('input[name="bDil"]:checked').value;
+    const raf = document.getElementById('bRaf').value.trim();
+
+    if (!ad || !yazar || !raf) {
+      alert('Lütfen zorunlu alanları doldurun.');
+      return;
+    }
+
+    // Process tags
+    const tagGrid = document.getElementById('bTagGrid');
+    const tags = Array.from(tagGrid.querySelectorAll('.tag-check input:checked'))
+                      .map(cb => cb.parentNode.textContent.trim());
+    const customTagInput = document.getElementById('bCustomTag');
+    const customTags = customTagInput.value.trim().split(',').map(t => t.trim()).filter(t => t.length > 0);
+    const allTags = [...tags, ...customTags].join(',');
+
+    const data = {
+      title: ad,
+      author: yazar,
+      language: dil,
+      shelf_location: raf,
+      tags: allTags,
+      resource_type: 'physical'
+    };
+
+    fetch('/api/resources/physical', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert('Basılı kaynak kaydedildi: ' + ad);
+        // Clear form
+        document.getElementById('bAd').value = '';
+        document.getElementById('bYazar').value = '';
+        document.getElementById('bRaf').value = '';
+        document.getElementById('bCustomTag').value = '';
+        // Uncheck all tags
+        const checks = document.getElementById('bTagGrid').querySelectorAll('.tag-check input');
+        checks.forEach(cb => cb.checked = false);
+        // Reload resources
+        loadResources();
+      } else {
+        alert('Kaydetme başarısız: ' + data.message);
+      }
+    })
+    .catch(error => {
+      alert('Bir hata oluştu: ' + error.message);
+      console.error('Error:', error);
+    });
+  }
+
+  function showFiles(input) {
+    const list  = document.getElementById('fileList');
+    const names = document.getElementById('uploadedNames');
+    list.innerHTML = '';
+    let nameList = [];
+    for (const f of input.files) {
+      const li = document.createElement('li');
+      li.innerHTML = '📄 ' + f.name;
+      list.appendChild(li);
+      nameList.push(f.name);
+    }
+    names.textContent = input.files.length + ' dosya seçildi: ' + nameList.join(', ');
+  }
+
+  function saveDijital() {
+    const f = document.getElementById('dijFile').files;
+    if (!f.length) { alert('Lütfen en az bir dosya seçin.'); return; }
+
+    // We'll handle the first file for simplicity (multiple file upload not implemented in API yet)
+    const file = f[0];
+    const formData = new FormData();
+    formData.append('file', file);
+
+    // Get other metadata from form
+    const titel = document.getElementById('dAd')?.value.trim() || '';
+    const yazar = document.getElementById('dYazar')?.value.trim() || '';
+    const dil = document.querySelector('input[name="dDil"]:checked')?.value || '';
+    const raf = document.getElementById('dRaf')?.value.trim() || '';
+    const tagGrid = document.getElementById('dTagGrid');
+    const tags = Array.from(tagGrid.querySelectorAll('.tag-check input:checked'))
+                      .map(cb => cb.parentNode.textContent.trim());
+    const customTagInput = document.getElementById('dCustomTag');
+    const customTags = customTagInput.value.trim().split(',').map(t => t.trim()).filter(t => t.length > 0);
+    const allTags = [...tags, ...customTags].join(',');
+
+    // Append metadata to formData
+    formData.append('title', titel);
+    formData.append('author', yazar);
+    formData.append('language', dil);
+    formData.append('shelf_location', raf);
+    formData.append('tags', allTags);
+    formData.append('resource_type', 'digital');
+
+    fetch('/api/resources/digital', {
+      method: 'POST',
+      body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert(f.length + ' dijital kaynak kaydedildi.');
+        // Clear form
+        document.getElementById('dAd').value = '';
+        document.getElementById('dYazar').value = '';
+        document.getElementById('dRaf').value = '';
+        document.getElementById('dCustomTag').value = '';
+        document.getElementById('dijFile').value = '';
+        document.getElementById('uploadedNames').textContent = 'Henüz dosya seçilmedi.';
+        document.getElementById('fileList').innerHTML = '';
+        // Uncheck all tags
+        const checks = document.getElementById('dTagGrid').querySelectorAll('.tag-check input');
+        checks.forEach(cb => cb.checked = false);
+        // Reload resources
+        loadResources();
+      } else {
+        alert('Kaydetme başarısız: ' + data.message);
+      }
+    })
+    .catch(error => {
+      alert('Bir hata oluztu: ' + error.message);
+      console.error('Error:', error);
+    });
+  }
+
+  // Function to download a digital resource (placeholder)
+  function downloadResource(filePath) {
+    // In a real implementation, we would serve the file from the uploads directory
+    // For now, we'll just show an alert
+    alert('Dosya indirme işlemi şu anda desteklenmiyor. Dosya yolu: ' + filePath);
+  }
+</script></body>
+</html>

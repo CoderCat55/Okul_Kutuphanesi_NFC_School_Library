@@ -1,0 +1,37 @@
+/* AJAX loading states */
+.loading {
+  text-align: center;
+  padding: 20px;
+  color: #6b7f96;
+  font-style: italic;
+}
+
+/* Form validation styles */
+input.error {
+  border-color: #ef4444 !important;
+}
+
+.form-error {
+  color: #ef4444;
+  font-size: 0.75rem;
+  margin-top: 4px;
+  display: block;
+}
+
+/* Button loading state */
+.btn-loading {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Responsive improvements */
+@media (max-width: 480px) {
+  .panel {
+    padding: 15px;
+  }
+
+  .btn {
+    padding: 6px 12px;
+    font-size: 0.75rem;
+  }
+}
