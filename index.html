@@ -339,7 +339,7 @@
 
       <!-- Right: System Response (hidden until student number submitted) -->
       <div class="flow-col" id="rightPanel" style="display:none;">
-        <div class="greeting-box">👋 Hoş geldin, <strong>Elif</strong></div>
+        <div class="greeting-box" id="greetingBox">👋 Hoş geldin, <strong>Elif</strong></div>
         <button class="btn btn-danger" onclick="simulateCheckout()">Çıkış Yap</button>
 
         <hr class="separator">
@@ -464,25 +464,65 @@
 
 <script>
   function handleStudentSubmit() {
-    const val = document.getElementById('studentNo').value.trim();
-    if (!val) { alert('Lütfen öğrenci numarası girin.'); return; }
+    const studentNo = document.getElementById('studentNo').value.trim();
+    if (!studentNo) {
+      alert('Lütfen öğrenci numarası girin.');
+      return;
+    }
 
-    const arrow = document.getElementById('flowArrow');
-    const right = document.getElementById('rightPanel');
-    const books = document.getElementById('booksSection');
+    // Show loading state
+    const submitBtn = document.querySelector('.btn-primary');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Öğrenci doğrulanıyor...';
 
-    arrow.style.display = 'flex';
-    books.style.display = 'block';
+    // Send AJAX request to validate student
+    fetch('/api/student/validate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ student_number: studentNo })
+    })
+    .then(response => response.json())
+    .then(data => {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
 
-    right.style.display = 'flex';
-    right.style.opacity = '0';
-    right.style.transform = 'translateX(10px)';
-    right.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-    requestAnimationFrame(() => {
-      right.style.opacity = '1';
-      right.style.transform = 'translateX(0)';
+      if (data.success) {
+        // Show greeting and enable book section
+        document.getElementById('greetingBox').innerHTML =
+          `👋 Hoş geldin, <strong>${data.student.name}</strong>`;
+        document.getElementById('booksSection').style.display = 'block';
+        document.getElementById('flowArrow').style.display = 'flex';
+        document.getElementById('rightPanel').style.display = 'flex';
+
+        // Animate the right panel
+        const rightPanel = document.getElementById('rightPanel');
+        rightPanel.style.opacity = '0';
+        rightPanel.style.transform = 'translateX(10px)';
+        requestAnimationFrame(() => {
+          rightPanel.style.opacity = '1';
+          rightPanel.style.transform = 'translateX(0)';
+        });
+      } else {
+        alert(data.message || 'Öğrenci bulunamadı.');
+      }
+    })
+    .catch(error => {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
+      alert('Bir hata oluştu. Lütfen tekrar deneyin.');
+      console.error('Error:', error);
     });
   }
+
+  // Also handle Enter key in the student number field
+  document.getElementById('studentNo').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+      handleStudentSubmit();
+    }
+  });
 
   function simulateCheckout() {
     const no = document.getElementById('studentNo').value.trim();
@@ -514,6 +554,5 @@
       msg.style.color = '#991b1b';
     }
   }
-</script>
-</body>
+</script></body>
 </html>
