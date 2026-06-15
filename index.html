@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kütüphane Sistemi</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #f0f4f8;
+    color: #1a2332;
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  h1.site-title {
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: #1a2332;
+    margin-bottom: 28px;
+    text-transform: uppercase;
+  }
+
+  .screen-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .panel {
+    background: #ffffff;
+    border: 1.5px solid #c9d6e3;
+    border-radius: 10px;
+    padding: 22px 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+
+  .panel h2 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1a2332;
+    margin-bottom: 16px;
+  }
+
+  /* ── BOX 1: Kitap Ödünç Alma / İade Etme ── */
+  .checkout-flow {
+    display: grid;
+    grid-template-columns: 1fr 32px 1fr;
+    gap: 12px;
+    align-items: start;
+  }
+
+  .flow-col { display: flex; flex-direction: column; gap: 10px; }
+
+  .flow-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-top: 36px;
+    color: #3b82f6;
+    font-size: 1.4rem;
+  }
+
+  .input-field {
+    border: 1.5px solid #c9d6e3;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    width: 100%;
+    color: #1a2332;
+    background: #f8fafc;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .input-field:focus { border-color: #3b82f6; background: #fff; }
+  .input-field::placeholder { color: #9aacbe; }
+
+  .greeting-box {
+    background: #f0f9ff;
+    border: 1.5px solid #bae0fd;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 0.83rem;
+    color: #1a6aa8;
+    font-weight: 600;
+  }
+
+  .btn {
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 600;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  .btn:hover { opacity: 0.85; transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+
+  .btn-primary { background: #3b82f6; color: #fff; }
+  .btn-danger  { background: #ef4444; color: #fff; }
+  .btn-gray    { background: #e2e8f0; color: #374151; }
+  .btn-green   { background: #22c55e; color: #fff; }
+  .btn-outline {
+    background: transparent;
+    border: 1.5px solid #3b82f6;
+    color: #3b82f6;
+  }
+
+  .info-card {
+    background: #fefce8;
+    border: 1.5px solid #fde68a;
+    border-radius: 6px;
+    padding: 9px 12px;
+    font-size: 0.8rem;
+    color: #92400e;
+    line-height: 1.5;
+  }
+
+  .separator {
+    border: none;
+    border-top: 1.5px dashed #c9d6e3;
+    margin: 14px 0;
+  }
+
+  .books-list-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #6b7f96;
+    margin-bottom: 8px;
+  }
+
+  .book-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    margin-bottom: 6px;
+    font-size: 0.82rem;
+    color: #374151;
+  }
+  .book-item span.dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #3b82f6;
+    flex-shrink: 0;
+  }
+
+  /* ── BOX 2: Katalog Arama ── */
+  .search-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .search-bar input {
+    flex: 1;
+    border: 1.5px solid #c9d6e3;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    background: #f8fafc;
+    outline: none;
+  }
+  .search-bar input:focus { border-color: #3b82f6; background: #fff; }
+
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+
+  .filter-chip {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1.5px solid #c9d6e3;
+    font-size: 0.75rem;
+    cursor: pointer;
+    color: #374151;
+    background: #f8fafc;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .filter-chip input[type=checkbox] { accent-color: #3b82f6; }
+  .filter-chip:hover { border-color: #3b82f6; color: #3b82f6; }
+
+  .catalog-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+  }
+  .catalog-table th {
+    background: #f0f4f8;
+    color: #6b7f96;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    padding: 7px 10px;
+    text-align: left;
+    border-bottom: 1.5px solid #c9d6e3;
+  }
+  .catalog-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #edf2f7;
+    color: #374151;
+    vertical-align: middle;
+  }
+  .catalog-table tr:last-child td { border-bottom: none; }
+  .catalog-table tr:hover td { background: #f8fafc; }
+
+  .tag {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin: 1px;
+  }
+  .tag-blue   { background: #dbeafe; color: #1d4ed8; }
+  .tag-green  { background: #dcfce7; color: #166534; }
+  .tag-yellow { background: #fef9c3; color: #854d0e; }
+  .tag-purple { background: #ede9fe; color: #5b21b6; }
+  .tag-gray   { background: #e2e8f0; color: #374151; }
+
+  .status-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 700;
+  }
+  .status-available { background: #dcfce7; color: #166534; }
+  .status-checked   { background: #fee2e2; color: #991b1b; }
+  .status-active    { background: #dbeafe; color: #1d4ed8; }
+
+  .btn-disa {
+    background: #f0f4f8;
+    border: 1.5px solid #c9d6e3;
+    border-radius: 5px;
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    color: #374151;
+    transition: all 0.15s;
+  }
+  .btn-disa:hover { background: #e0e7f0; border-color: #94a3b8; }
+
+  /* ── BOX 3: Admin Girişi ── */
+  .admin-login {
+    display: grid;
+    grid-template-columns: 1fr 32px 1fr;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .login-form { display: flex; flex-direction: column; gap: 10px; }
+  .login-form label { font-size: 0.75rem; font-weight: 600; color: #6b7f96; margin-bottom: 2px; }
+
+  .admin-redirect {
+    background: #f0fdf4;
+    border: 1.5px solid #86efac;
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-size: 0.82rem;
+    color: #166534;
+    line-height: 1.6;
+  }
+  .admin-redirect strong { display: block; font-size: 0.85rem; margin-bottom: 4px; }
+
+  .password-hint {
+    font-size: 0.72rem;
+    color: #9aacbe;
+    margin-top: 2px;
+  }
+
+  /* Giriş alanı + buton yan yana */
+  .student-input-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .student-input-row .input-field {
+    flex: 1;
+  }
+
+  @media (max-width: 600px) {
+    .checkout-flow { grid-template-columns: 1fr; }
+    .flow-arrow { padding-top: 0; transform: rotate(90deg); }
+    .admin-login { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<h1 class="site-title">📚 Kütüphane Sistemi</h1>
+
+<div class="screen-stack">
+
+  <!-- ══════════════════════════════════
+       BOX 1 — Kitap Ödünç Alma / İade
+       ══════════════════════════════════ -->
+  <div class="panel">
+    <h2>Kitap Ödünç Alma / İade Etme</h2>
+
+    <div class="checkout-flow" id="checkoutFlow">
+
+      <!-- Left: Student Side -->
+      <div class="flow-col" id="leftPanel">
+        <p style="font-size:0.78rem;font-weight:700;color:#6b7f96;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Giriş</p>
+        <div class="student-input-row">
+          <input class="input-field" type="text" placeholder="Öğrenci numaranızı girin" id="studentNo" />
+          <button class="btn btn-primary" onclick="handleStudentSubmit()">Kitapları Okut</button>
+        </div>
+
+        <div id="booksSection" style="display:none;">
+          <div class="books-list-label" style="margin-top:10px;">Ödünç Alınan Kitaplar</div>
+          <div class="book-item"><span class="dot"></span> Kitap X</div>
+          <div class="book-item"><span class="dot"></span> Kitap Y</div>
+        </div>
+      </div>
+
+      <!-- Arrow (hidden until student number submitted) -->
+      <div class="flow-arrow" id="flowArrow" style="display:none;">→</div>
+
+      <!-- Right: System Response (hidden until student number submitted) -->
+      <div class="flow-col" id="rightPanel" style="display:none;">
+        <div class="greeting-box">👋 Hoş geldin, <strong>Elif</strong></div>
+        <button class="btn btn-danger" onclick="simulateCheckout()">Çıkış Yap</button>
+
+        <hr class="separator">
+
+        <div class="info-card">
+          📖 <strong>Kitap X</strong> ödünç alındı.<br>
+          <span style="color:#666">Elif Adlı öğrenci tarafından</span>
+        </div>
+
+        <div class="info-card" style="background:#f0fdf4;border-color:#86efac;color:#166534;margin-top:8px;">
+          ✅ <strong>Kitap Y</strong> iade edildi.<br>
+          <span style="color:#14532d">Elif Adlı öğrenci tarafından</span>
+        </div>
+      </div>
+    </div>
+
+    <hr class="separator">
+    <p style="font-size:0.75rem;color:#9aacbe;text-align:center;">
+      Kitap ödünç almak veya iade etmek için öğrenci numarasını giriniz.
+    </p>
+  </div>
+
+
+  <!-- ══════════════════════════════════
+       BOX 2 — Katalog / Kaynak Arama
+       ══════════════════════════════════ -->
+  <div class="panel">
+    <h2>Katalog &amp; Kaynak Arama</h2>
+
+    <p style="font-size:0.72rem;color:#9aacbe;margin-bottom:10px;">
+      Dijital Erişim Adresi: <code style="color:#3b82f6;">https://192.168.x.x</code>
+    </p>
+
+    <!-- Search bar -->
+    <div class="search-bar">
+      <input type="text" placeholder="🔍 Arama çubuğu..." id="searchInput" />
+      <button class="btn btn-primary" onclick="doSearch()">Ara</button>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters">
+      <label class="filter-chip"><input type="checkbox"> 3. Sınıf</label>
+      <label class="filter-chip"><input type="checkbox"> 10. Sınıf</label>
+      <label class="filter-chip"><input type="checkbox" checked> Dijital Kaynak</label>
+      <label class="filter-chip"><input type="checkbox" checked> Basılı Kaynak</label>
+      <label class="filter-chip"><input type="checkbox"> Dil</label>
+      <label class="filter-chip"><input type="checkbox"> Olimpiyat Matematik</label>
+      <label class="filter-chip"><input type="checkbox"> Olimpiyat Biyoloji</label>
+    </div>
+
+    <!-- Catalog table -->
+    <table class="catalog-table">
+      <thead>
+        <tr>
+          <th>Kaynak Adı</th>
+          <th>Bilgiler</th>
+          <th>Etiket</th>
+          <th>Durum</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Kitap X</strong></td>
+          <td style="font-size:0.75rem;color:#6b7f96;">
+            Yazar / Dil<br>Raf yeri
+          </td>
+          <td>
+            <span class="tag tag-blue">#Basılı</span>
+            <span class="tag tag-green">#Fizik</span>
+          </td>
+          <td><span class="status-badge status-checked">Ödünç Alındı</span></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td><strong>Dijital Kaynak Adı</strong></td>
+          <td style="font-size:0.75rem;color:#6b7f96;">—</td>
+          <td>
+            <span class="tag tag-yellow">#Almanca</span>
+            <span class="tag tag-purple">#Dijital</span>
+          </td>
+          <td></td>
+          <td><button class="btn-disa">Dışa Aktar</button></td>
+        </tr>
+        <tr>
+          <td><strong>Kitap Y</strong></td>
+          <td style="font-size:0.75rem;color:#6b7f96;">
+            Yazar / Dil<br>Raf yeri
+          </td>
+          <td>
+            <span class="tag tag-blue">#Matematik</span>
+            <span class="tag tag-gray">#Basılı</span>
+          </td>
+          <td><span class="status-badge status-active">Aktif</span></td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+
+  <!-- ══════════════════════════════════
+       BOX 3 — Admin Girişi
+       ══════════════════════════════════ -->
+  <div class="panel">
+    <h2>Admin Girişi</h2>
+
+    <div class="admin-login">
+      <!-- Login form -->
+      <div class="login-form">
+        <div>
+          <label>Şifre</label>
+          <input class="input-field" type="password" id="adminPass" placeholder="••••••••" />
+        </div>
+        <button class="btn btn-primary" onclick="adminLogin()">Giriş</button>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- end .screen-stack -->
+
+<script>
+  function handleStudentSubmit() {
+    const val = document.getElementById('studentNo').value.trim();
+    if (!val) { alert('Lütfen öğrenci numarası girin.'); return; }
+
+    const arrow = document.getElementById('flowArrow');
+    const right = document.getElementById('rightPanel');
+    const books = document.getElementById('booksSection');
+
+    arrow.style.display = 'flex';
+    books.style.display = 'block';
+
+    right.style.display = 'flex';
+    right.style.opacity = '0';
+    right.style.transform = 'translateX(10px)';
+    right.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+    requestAnimationFrame(() => {
+      right.style.opacity = '1';
+      right.style.transform = 'translateX(0)';
+    });
+  }
+
+  function simulateCheckout() {
+    const no = document.getElementById('studentNo').value.trim();
+    document.getElementById('studentNo').value = '';
+    document.getElementById('flowArrow').style.display = 'none';
+    document.getElementById('rightPanel').style.display = 'none';
+    document.getElementById('booksSection').style.display = 'none';
+    if (no) alert('Çıkış yapıldı. Öğrenci No: ' + no);
+  }
+
+  function doSearch() {
+    const q = document.getElementById('searchInput').value.trim();
+    if (q) alert('Aranıyor: ' + q);
+  }
+
+  function adminLogin() {
+    const pass = document.getElementById('adminPass').value;
+    const msg  = document.getElementById('adminMsg');
+    if (pass === 'yogurt') {
+      msg.innerHTML = '<strong>✅ Giriş başarılı!</strong> Admin sayfasına yönlendiriliyorsunuz...';
+      msg.style.background = '#f0fdf4';
+      msg.style.borderColor = '#86efac';
+      msg.style.color = '#166534';
+      setTimeout(() => { window.location.href = 'admin.html'; }, 1000);
+    } else {
+      msg.innerHTML = '<strong>❌ Hatalı şifre.</strong> Lütfen tekrar deneyin.';
+      msg.style.background = '#fff1f2';
+      msg.style.borderColor = '#fecdd3';
+      msg.style.color = '#991b1b';
+    }
+  }
+</script>
+</body>
+</html>
