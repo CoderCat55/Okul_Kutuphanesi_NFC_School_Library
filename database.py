@@ -6,6 +6,13 @@ DATABASE_PATH = os.environ.get('DATABASE_PATH', 'library.db')
 
 @contextmanager
 def get_db_connection():
+    """Create a database connection context manager.
+
+    Yields:
+        sqlite3.Connection: A database connection with row_factory set to sqlite3.Row.
+
+    The connection is automatically closed when exiting the context.
+    """
     conn = sqlite3.connect(DATABASE_PATH)
     conn.row_factory = sqlite3.Row
     try:
@@ -14,7 +21,17 @@ def get_db_connection():
         conn.close()
 
 def init_db():
-    with get_db_connection() as conn:
+    """Initialize the database by creating all required tables.
+
+    Returns:
+        sqlite3.Connection: The database connection with row_factory set to sqlite3.Row.
+
+    Raises:
+        sqlite3.Error: If an error occurs during database initialization.
+    """
+    conn = sqlite3.connect(DATABASE_PATH)
+    conn.row_factory = sqlite3.Row
+    try:
         cursor = conn.cursor()
         # Students table
         cursor.execute('''
@@ -35,7 +52,8 @@ def init_db():
                 author TEXT,
                 language TEXT,
                 shelf_location TEXT,
-                resource_type TEXT NOT NULL CHECK (resource_type IN ('physical', 'digital')),
+                resource_type TEXT NOT NULL
+                CHECK (resource_type IN ('physical', 'digital')),
                 tags TEXT,
                 file_path TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -48,7 +66,8 @@ def init_db():
                 id INTEGER PRIMARY KEY,
                 student_id INTEGER NOT NULL,
                 resource_id INTEGER NOT NULL,
-                transaction_type TEXT NOT NULL CHECK (transaction_type IN ('checkout', 'return')),
+                transaction_type TEXT NOT NULL
+                CHECK (transaction_type IN ('checkout', 'return')),
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 notes TEXT,
                 FOREIGN KEY (student_id) REFERENCES students (id),
@@ -65,4 +84,7 @@ def init_db():
             )
         ''')
         conn.commit()
+    except Exception:
+        conn.close()
+        raise
     return conn
