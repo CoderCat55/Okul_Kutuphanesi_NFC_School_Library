@@ -75,3 +75,30 @@ Based on your selections, here's my proposed design for the Okul Kutuphanesi lib
 
     This todo list covers the major gaps between the current simulated frontend and a complete working
     library system with NFC integration, persistent storage, and full admin functionality.
+
+     on the code in the application, the required format for the student list file (CSV or Excel) is:
+
+ns (in order):
+udent_number (required) - Unique identifier for the student
+me (required) - Full name of the student
+ass (optional) - Class/grade information
+
+ormat:
+h row represents one student
+ues should be comma-separated for CSV files
+ding/trailing whitespace will be automatically trimmed
+      - If the file includes a header row, it will be automatically detected and skipped
+
+      Example valid CSV content:
+      12345,Ahmet Yılmaz,9A
+ 67890,Mehmet Demir,10B
+,Zara Khan
+
+tant notes:
+ system accepts .csv, .xlsx, and .xls file formats
+minimum, each row must contain student_number and name (first two columns)
+ class column is optional - if missing, it will be stored as NULL
+ty student_number or name values will cause the row to be skipped
+licate student numbers will update existing records rather than create new ones
+
+      This matches the implementation in app.py where the upload_students() function processes rows with if len(row) >= 2 and extracts student_number = row[0].strip(), name = row[1].strip(), and class_name = row[2].strip() if len(row) > 2 else None.

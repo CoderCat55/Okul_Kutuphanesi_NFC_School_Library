@@ -352,9 +352,9 @@
       <div class="upload-zone" onclick="document.getElementById('studentFile').click()">
         <div class="icon">⬆️</div>
         <p>Dosya seçmek için tıklayın</p>
-        <input type="file" id="studentFile" style="display:none" accept=".csv,.xlsx,.xls">
+        <input type="file" id="studentFile" style="display:none" accept=".csv,.xlsx,.xls" onchange="uploadStudents()">
       </div>
-      <button class="btn btn-primary" onclick="uploadStudents()">Yükle</button><!--Delete this button and automatically upload it when user choose  file-->
+      <div id="studentFileStatus" style="font-size:0.78rem;color:#6b7f96;margin-top:4px;min-height:18px;">Henüz dosya seçilmedi.</div>
     </div>
 
     <div class="sep"></div>
@@ -365,9 +365,9 @@
       <div class="upload-zone" onclick="document.getElementById('importFile').click()">
         <div class="icon">⬆️</div>
         <p>Dosya seçmek için tıklayın</p>
-        <input type="file" id="importFile" style="display:none" accept=".db">
+        <input type="file" id="importFile" style="display:none" accept=".db" onchange="importDB()">
       </div>
-      <button class="btn btn-gray" onclick="importDB()">📥 Veri Tabanını Yükle</button> <!--Delete this button and automatically upload it when user choose  file-->
+      <div id="dbFileStatus" style="font-size:0.78rem;color:#6b7f96;margin-top:4px;min-height:18px;">Henüz dosya seçilmedi.</div>
     </div>
 
   </div>
@@ -404,9 +404,15 @@
       <input type="text" placeholder="A-12" id="bRaf" />
     </div>
     <div class="form-row">
+      <label>NFC Kart No</label>
+      <input type="text" placeholder="Kart okuyucu (R20C-USB) ile okutun" id="bNfcTag" autocomplete="off" />
+      <div class="tag-hint">İmleci bu alana getirip kitabın NFC etiketini okuyucuya okutun. Boş bırakılırsa bu kaynak NFC ile ödünç alınamaz.</div>
+    </div>
+    <!--<div class="form-row">
       <label>UUID</label>
       <input type="text" placeholder="Otomatik oluşturulur" id="bUUID" />
-    </div>
+    </div>--> 
+    <!--commented because if user wont interact with it they dnt need to see it-->
 
     <div class="form-row">
       <label>Etiketler (Tag)</label>
@@ -640,7 +646,10 @@
 
   function uploadStudents() {
     const f = document.getElementById('studentFile').files[0];
-    if (!f) { alert('Lütfen bir dosya seçin.'); return; }
+    if (!f) { return; }
+
+    const statusEl = document.getElementById('studentFileStatus');
+    statusEl.textContent = '⏳ Yükleniyor: ' + f.name;
 
     const formData = new FormData();
     formData.append('file', f);
@@ -652,14 +661,14 @@
     .then(response => response.json())
     .then(data => {
       if (data.success) {
-        alert('Öğrenci listesi yüklendi: ' + data.added + ' öğrenci eklendi, ' + data.updated + ' öğrenci güncellendi.');
-        document.getElementById('studentFile').value = '';
+        statusEl.textContent = '✅ ' + f.name + ' — ' + data.added + ' eklendi, ' + data.updated + ' güncellendi.';
       } else {
-        alert('Yükleme başarısız: ' + data.message);
+        statusEl.textContent = '❌ Yükleme başarısız: ' + data.message;
       }
+      document.getElementById('studentFile').value = '';
     })
     .catch(error => {
-      alert('Bir hata oluştu: ' + error.message);
+      statusEl.textContent = '❌ Bir hata oluştu: ' + error.message;
       console.error('Error:', error);
     });
   }
@@ -692,8 +701,17 @@
 
   function importDB() {
     const f = document.getElementById('importFile').files[0];
-    if (!f) { alert('Lütfen bir .db dosyası seçin.'); return; }
-    if (!f.name.endsWith('.db')) { alert('Lütfen bir .db dosyası seçin.'); return; }
+    if (!f) { return; }
+
+    const statusEl = document.getElementById('dbFileStatus');
+
+    if (!f.name.endsWith('.db')) {
+      statusEl.textContent = '❌ Lütfen bir .db dosyası seçin.';
+      document.getElementById('importFile').value = '';
+      return;
+    }
+
+    statusEl.textContent = '⏳ Yükleniyor: ' + f.name;
 
     const formData = new FormData();
     formData.append('file', f);
@@ -705,14 +723,14 @@
     .then(response => response.json())
     .then(data => {
       if (data.success) {
-        alert('Veri tabanı başarıyla yüklendi. Lütfen uygulamayı yeniden başlatın.');
-        document.getElementById('importFile').value = '';
+        statusEl.textContent = '✅ ' + f.name + ' yüklendi. Lütfen uygulamayı yeniden başlatın.';
       } else {
-        alert('Yükleme başarısız: ' + data.message);
+        statusEl.textContent = '❌ Yükleme başarısız: ' + data.message;
       }
+      document.getElementById('importFile').value = '';
     })
     .catch(error => {
-      alert('Bir hata oluştu: ' + error.message);
+      statusEl.textContent = '❌ Bir hata oluştu: ' + error.message;
       console.error('Error:', error);
     });
   }
@@ -722,6 +740,7 @@
     const yazar = document.getElementById('bYazar').value.trim();
     const dil = document.querySelector('input[name="bDil"]:checked').value;
     const raf = document.getElementById('bRaf').value.trim();
+    const nfcTag = document.getElementById('bNfcTag').value.trim();
 
     if (!ad || !yazar || !raf) {
       alert('Lütfen zorunlu alanları doldurun.');
@@ -742,7 +761,8 @@
       language: dil,
       shelf_location: raf,
       tags: allTags,
-      resource_type: 'physical'
+      resource_type: 'physical',
+      nfc_tag: nfcTag || null
     };
 
     fetch('/api/resources/physical', {
@@ -760,6 +780,7 @@
         document.getElementById('bAd').value = '';
         document.getElementById('bYazar').value = '';
         document.getElementById('bRaf').value = '';
+        document.getElementById('bNfcTag').value = '';
         document.getElementById('bCustomTag').value = '';
         // Uncheck all tags
         const checks = document.getElementById('bTagGrid').querySelectorAll('.tag-check input');
@@ -789,8 +810,8 @@
     }
     names.textContent = input.files.length + ' dosya seçildi: ' + nameList.join(', ');
 
-    // Set title to filename without extension if title is empty
-    if (input.files.length > 0 && document.getElementById('dTitle').value.trim() === '') {
+    // Title is always derived from the (first) selected file's name
+    if (input.files.length > 0) {
       const fileName = input.files[0].name;
       const titleWithoutExtension = fileName.replace(/\.[^/.]+$/, "");
       document.getElementById('dTitle').value = titleWithoutExtension;

@@ -1,7 +1,6 @@
 import os
 import uuid
 from werkzeug.utils import secure_filename
-from flask import currentapp
 
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'csv', 'xlsx', 'xls'}
 UPLOAD_FOLDER = 'uploads'

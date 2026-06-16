@@ -321,16 +321,22 @@
 
       <!-- Left: Student Side -->
       <div class="flow-col" id="leftPanel">
-        <p style="font-size:0.78rem;font-weight:700;color:#6b7f96;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Giriş</p>
-        <div class="student-input-row">
+        <p style="font-size:0.78rem;font-weight:700;color:#6b7f96;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;" id="girisLabel">Giriş</p>
+        <div class="student-input-row" id="studentInputRow">
           <input class="input-field" type="text" placeholder="Öğrenci numaranızı girin" id="studentNo" />
-          <button class="btn btn-primary" onclick="handleStudentSubmit()">Kitapları Okut</button>
+          <button class="btn btn-primary" id="kitaplariOkutBtn" onclick="handleStudentSubmit()">Kitapları Okut</button>
+        </div>
+        <div id="nfcBox" style="display:none;margin-top:10px;">
+          <div class="books-list-label" style="margin-bottom:6px;">📡 NFC ile Kitap Okut</div>
+          <input class="input-field" type="text" id="nfcTagInput" placeholder="Kitabı NFC okuyucuya okutun..." autocomplete="off" />
+          <div id="nfcStatus" style="font-size:0.72rem;color:#9aacbe;margin-top:4px;"></div>
         </div>
 
         <div id="booksSection" style="display:none;">
           <div class="books-list-label" style="margin-top:10px;">Ödünç Alınan Kitaplar</div>
-          <div class="book-item"><span class="dot"></span> Kitap X</div>
-          <div class="book-item"><span class="dot"></span> Kitap Y</div>
+          <div id="checkedOutBooks">
+            <div style="font-size:0.8rem;color:#9aacbe;padding:6px 0;">Yükleniyor...</div>
+          </div>
         </div>
       </div>
 
@@ -339,20 +345,19 @@
 
       <!-- Right: System Response (hidden until student number submitted) -->
       <div class="flow-col" id="rightPanel" style="display:none;">
-        <div class="greeting-box" id="greetingBox">👋 Hoş geldin, <strong>Elif</strong></div>
-        <button class="btn btn-danger" onclick="simulateCheckout()">Çıkış Yap</button>
+        <div class="greeting-box" id="greetingBox"></div>
+        <button class="btn btn-danger" onclick="doLogout()">Çıkış Yap</button>
 
         <hr class="separator">
 
-        <div class="info-card">
-          📖 <strong>Kitap X</strong> ödünç alındı.<br>
-          <span style="color:#666">Elif Adlı öğrenci tarafından</span>
+        <!-- Kitap arama + ödünç al -->
+        <div style="display:flex;gap:6px;margin-bottom:6px;">
+          <input class="input-field" type="text" id="bookSearchInput" placeholder="Kitap ara..." style="flex:1;font-size:0.8rem;" oninput="searchBooksForCheckout()" />
         </div>
+        <div id="bookSearchResults" style="display:none;max-height:180px;overflow-y:auto;border:1.5px solid #c9d6e3;border-radius:6px;background:#fff;margin-bottom:8px;"></div>
 
-        <div class="info-card" style="background:#f0fdf4;border-color:#86efac;color:#166534;margin-top:8px;">
-          ✅ <strong>Kitap Y</strong> iade edildi.<br>
-          <span style="color:#14532d">Elif Adlı öğrenci tarafından</span>
-        </div>
+        <!-- İşlem geçmişi -->
+        <div id="transactionLog" style="display:flex;flex-direction:column;gap:6px;"></div>
       </div>
     </div>
 
@@ -370,7 +375,7 @@
     <h2>Katalog &amp; Kaynak Arama</h2>
 
     <p style="font-size:0.72rem;color:#9aacbe;margin-bottom:10px;">
-      Dijital Erişim Adresi: <code style="color:#3b82f6;">https://192.168.x.x</code>
+      Dijital Erişim Adresi: <code style="color:#3b82f6;" id="ipAddress"></code>
     </p>
 
     <!-- Search bar -->
@@ -401,42 +406,7 @@
           <th></th>
         </tr>
       </thead>
-      <tbody>
-        <tr>
-          <td><strong>Kitap X</strong></td>
-          <td style="font-size:0.75rem;color:#6b7f96;">
-            Yazar / Dil<br>Raf yeri
-          </td>
-          <td>
-            <span class="tag tag-blue">#Basılı</span>
-            <span class="tag tag-green">#Fizik</span>
-          </td>
-          <td><span class="status-badge status-checked">Ödünç Alındı</span></td>
-          <td></td>
-        </tr>
-        <tr>
-          <td><strong>Dijital Kaynak Adı</strong></td>
-          <td style="font-size:0.75rem;color:#6b7f96;">—</td>
-          <td>
-            <span class="tag tag-yellow">#Almanca</span>
-            <span class="tag tag-purple">#Dijital</span>
-          </td>
-          <td></td>
-          <td><button class="btn-disa">Dışa Aktar</button></td>
-        </tr>
-        <tr>
-          <td><strong>Kitap Y</strong></td>
-          <td style="font-size:0.75rem;color:#6b7f96;">
-            Yazar / Dil<br>Raf yeri
-          </td>
-          <td>
-            <span class="tag tag-blue">#Matematik</span>
-            <span class="tag tag-gray">#Basılı</span>
-          </td>
-          <td><span class="status-badge status-active">Aktif</span></td>
-          <td></td>
-        </tr>
-      </tbody>
+      <tbody id="catalogTableBody"></tbody>
     </table>
   </div>
 
@@ -455,6 +425,7 @@
           <input class="input-field" type="password" id="adminPass" placeholder="••••••••" />
         </div>
         <button class="btn btn-primary" onclick="adminLogin()">Giriş</button>
+        <div id="adminMsg" style="margin-top: 10px; padding: 8px; border-radius: 4px; display: none;"></div>
       </div>
 
     </div>
@@ -463,96 +434,549 @@
 </div><!-- end .screen-stack -->
 
 <script>
+  // Aktif öğrenci state'i
+  let currentStudent = null;
+  let allResources = [];       // katalogdan gelen tüm kaynaklar (arama için)
+  let transactionLog = [];     // bu oturumda yapılan işlemler
+
+  /* ── Öğrenci Doğrulama ── */
   function handleStudentSubmit() {
     const studentNo = document.getElementById('studentNo').value.trim();
-    if (!studentNo) {
-      alert('Lütfen öğrenci numarası girin.');
-      return;
-    }
+    if (!studentNo) { alert('Lütfen öğrenci numarası girin.'); return; }
 
-    // Show loading state
-    const submitBtn = document.querySelector('.btn-primary');
-    const originalText = submitBtn.textContent;
+    const submitBtn = document.querySelector('#leftPanel .btn-primary');
     submitBtn.disabled = true;
-    submitBtn.textContent = 'Öğrenci doğrulanıyor...';
+    submitBtn.textContent = 'Doğrulanıyor...';
 
-    // Send AJAX request to validate student
     fetch('/api/student/validate', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ student_number: studentNo })
     })
-    .then(response => response.json())
+    .then(r => r.json())
     .then(data => {
       submitBtn.disabled = false;
-      submitBtn.textContent = originalText;
+      submitBtn.textContent = 'Kitapları Okut';
 
       if (data.success) {
-        // Show greeting and enable book section
-        document.getElementById('greetingBox').innerHTML =
-          `👋 Hoş geldin, <strong>${data.student.name}</strong>`;
-        document.getElementById('booksSection').style.display = 'block';
-        document.getElementById('flowArrow').style.display = 'flex';
-        document.getElementById('rightPanel').style.display = 'flex';
+        currentStudent = data.student;
+        transactionLog = [];
 
-        // Animate the right panel
+        // Öğrenci numarası girme textboxu ve "Kitapları Okut" butonu gizlenir
+        document.getElementById('studentInputRow').style.display = 'none';
+        document.getElementById('girisLabel').style.display = 'none';
+
+        document.getElementById('greetingBox').innerHTML =
+          `👋 Hoş geldin, <strong>${data.student.name}</strong>` +
+          (data.student.class ? ` <span style="font-weight:400;color:#2563eb">(${data.student.class})</span>` : '');
+
+        document.getElementById('booksSection').style.display = 'block';
+        document.getElementById('nfcBox').style.display = 'block';
+        document.getElementById('flowArrow').style.display = 'flex';
         const rightPanel = document.getElementById('rightPanel');
+        rightPanel.style.display = 'flex';
         rightPanel.style.opacity = '0';
         rightPanel.style.transform = 'translateX(10px)';
         requestAnimationFrame(() => {
+          rightPanel.style.transition = 'opacity 0.25s, transform 0.25s';
           rightPanel.style.opacity = '1';
           rightPanel.style.transform = 'translateX(0)';
         });
+
+        loadCheckedOutBooks();
+        renderTransactionLog();
+        startNfcScan();
       } else {
         alert(data.message || 'Öğrenci bulunamadı.');
       }
     })
-    .catch(error => {
+    .catch(() => {
       submitBtn.disabled = false;
-      submitBtn.textContent = originalText;
+      submitBtn.textContent = 'Kitapları Okut';
       alert('Bir hata oluştu. Lütfen tekrar deneyin.');
-      console.error('Error:', error);
     });
   }
 
-  // Also handle Enter key in the student number field
   document.getElementById('studentNo').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-      handleStudentSubmit();
-    }
+    if (e.key === 'Enter') handleStudentSubmit();
   });
 
-  function simulateCheckout() {
-    const no = document.getElementById('studentNo').value.trim();
+  /* ── Çıkış ── */
+  function doLogout() {
+    currentStudent = null;
+    transactionLog = [];
+    stopNfcScan();
     document.getElementById('studentNo').value = '';
+    document.getElementById('studentInputRow').style.display = 'flex';
+    document.getElementById('girisLabel').style.display = 'block';
+    document.getElementById('nfcBox').style.display = 'none';
+    document.getElementById('nfcStatus').textContent = '';
+    document.getElementById('nfcTagInput').value = '';
     document.getElementById('flowArrow').style.display = 'none';
     document.getElementById('rightPanel').style.display = 'none';
     document.getElementById('booksSection').style.display = 'none';
-    if (no) alert('Çıkış yapıldı. Öğrenci No: ' + no);
+    document.getElementById('bookSearchInput').value = '';
+    document.getElementById('bookSearchResults').style.display = 'none';
+    document.getElementById('checkedOutBooks').innerHTML =
+      '<div style="font-size:0.8rem;color:#9aacbe;padding:6px 0;">Yükleniyor...</div>';
+    document.getElementById('studentNo').focus();
+  }
+
+  /* ── Ödünç Alınan Kitapları Getir ── */
+  function loadCheckedOutBooks() {
+    if (!currentStudent) return;
+    const container = document.getElementById('checkedOutBooks');
+    container.innerHTML = '<div style="font-size:0.8rem;color:#9aacbe;padding:6px 0;">Yükleniyor...</div>';
+
+    fetch(`/api/transactions?student_id=${currentStudent.id}`)
+    .then(r => r.json())
+    .then(data => {
+      if (!data.success) { container.innerHTML = '<div style="color:#991b1b;font-size:0.8rem;">Yüklenemedi.</div>'; return; }
+
+      // Hangi kitaplar şu an ödünç alınmış? (son işlemi 'checkout' olanlar)
+      const resourceMap = {};
+      data.transactions.forEach(t => {
+        // Her kaynak için sadece en son işlemi tut (zaten DESC sıralı geliyor)
+        if (!resourceMap[t.resource_id]) {
+          resourceMap[t.resource_id] = t;
+        }
+      });
+
+      const checkedOut = Object.values(resourceMap).filter(t => t.transaction_type === 'checkout');
+
+      container.innerHTML = '';
+      if (checkedOut.length === 0) {
+        container.innerHTML = '<div style="font-size:0.8rem;color:#9aacbe;padding:6px 0;">Ödünç alınan kitap yok.</div>';
+        return;
+      }
+
+      checkedOut.forEach(t => {
+        const item = document.createElement('div');
+        item.className = 'book-item';
+        item.style.justifyContent = 'space-between';
+        item.innerHTML = `
+          <span style="display:flex;align-items:center;gap:8px;">
+            <span class="dot"></span>
+            <span>${t.resource_title}</span>
+          </span>
+          <button class="btn-disa" onclick="returnBook(${t.resource_id}, '${escHtml(t.resource_title)}', this)"
+            style="font-size:0.72rem;padding:3px 8px;color:#dc2626;border-color:#fca5a5;">
+            İade Et
+          </button>`;
+        container.appendChild(item);
+      });
+    })
+    .catch(() => {
+      container.innerHTML = '<div style="color:#991b1b;font-size:0.8rem;">Bağlantı hatası.</div>';
+    });
+  }
+
+  /* ── Kitap Arama (ödünç almak için) ── */
+  function searchBooksForCheckout() {
+    const query = document.getElementById('bookSearchInput').value.trim();
+    const resultsEl = document.getElementById('bookSearchResults');
+
+    if (!query) { resultsEl.style.display = 'none'; return; }
+
+    fetch(`/api/resources?q=${encodeURIComponent(query)}`)
+    .then(r => r.json())
+    .then(data => {
+      if (!data.success || data.resources.length === 0) {
+        resultsEl.innerHTML = '<div style="padding:10px;font-size:0.8rem;color:#9aacbe;">Sonuç bulunamadı.</div>';
+        resultsEl.style.display = 'block';
+        return;
+      }
+
+      resultsEl.innerHTML = '';
+      resultsEl.style.display = 'block';
+
+      data.resources.forEach(res => {
+        if (res.resource_type !== 'physical') return; // dijital ödünç alınmaz
+
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid #edf2f7;font-size:0.8rem;gap:8px;';
+
+        const info = document.createElement('span');
+        info.innerHTML = `<strong>${escHtml(res.title)}</strong>` +
+          (res.author ? ` <span style="color:#6b7f96">— ${escHtml(res.author)}</span>` : '');
+        row.appendChild(info);
+
+        if (res.is_available) {
+          const btn = document.createElement('button');
+          btn.className = 'btn-disa';
+          btn.textContent = '+ Ödünç Al';
+          btn.style.cssText = 'font-size:0.72rem;padding:3px 8px;color:#166534;border-color:#86efac;white-space:nowrap;';
+          btn.onclick = () => checkoutBook(res.id, res.title, btn);
+          row.appendChild(btn);
+        } else {
+          const badge = document.createElement('span');
+          badge.className = 'status-badge status-checked';
+          badge.textContent = 'Ödünç Alındı';
+          row.appendChild(badge);
+        }
+
+        resultsEl.appendChild(row);
+      });
+    })
+    .catch(() => {
+      resultsEl.innerHTML = '<div style="padding:10px;font-size:0.8rem;color:#991b1b;">Arama hatası.</div>';
+      resultsEl.style.display = 'block';
+    });
+  }
+
+  /* ── Ödünç Al ── */
+  function checkoutBook(resourceId, title, btn) {
+    if (!currentStudent) return;
+    btn.disabled = true;
+    btn.textContent = '...';
+
+    fetch('/api/transactions/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ student_id: currentStudent.id, resource_id: resourceId })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        addTransactionCard('checkout', title);
+        document.getElementById('bookSearchInput').value = '';
+        document.getElementById('bookSearchResults').style.display = 'none';
+        loadCheckedOutBooks();
+      } else {
+        btn.disabled = false;
+        btn.textContent = '+ Ödünç Al';
+        alert(data.message || 'İşlem başarısız.');
+      }
+    })
+    .catch(() => {
+      btn.disabled = false;
+      btn.textContent = '+ Ödünç Al';
+      alert('Bağlantı hatası.');
+    });
+  }
+
+  /* ── İade Et ── */
+  function returnBook(resourceId, title, btn) {
+    if (!currentStudent) return;
+    btn.disabled = true;
+    btn.textContent = '...';
+
+    fetch('/api/transactions/return', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ student_id: currentStudent.id, resource_id: resourceId })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        addTransactionCard('return', title);
+        loadCheckedOutBooks();
+      } else {
+        btn.disabled = false;
+        btn.textContent = 'İade Et';
+        alert(data.message || 'İşlem başarısız.');
+      }
+    })
+    .catch(() => {
+      btn.disabled = false;
+      btn.textContent = 'İade Et';
+      alert('Bağlantı hatası.');
+    });
+  }
+
+  /* ── NFC ile Kitap Okutma (R20C-USB) ──
+     R20C-USB bir HID klavye-emülasyon okuyucudur: gerçek bir tarayıcı NFC
+     API'siyle konuşmaz, okuttuğu kart/etiket numarasını "yazıyormuş gibi"
+     hangi input alanı o sırada fokuslıysa oraya basar ve sonuna Enter (\n)
+     ekler. Bu yüzden burada gerçek bir "tarama" yapılmıyor; öğrenci giriş
+     yaptığında #nfcTagInput alanına sürekli fokus tutulur, okuyucunun
+     yazdığı metin Enter ile tetiklenip backend'e gönderilir.
+     Admin tarafında aynı mantıkla #bNfcTag alanına kart numarası okutulup
+     kaynağa kaydedilir (bkz. admin.html). */
+  let nfcRefocusInterval = null;
+
+  function startNfcScan() {
+    const input = document.getElementById('nfcTagInput');
+    const statusEl = document.getElementById('nfcStatus');
+    if (!input) return;
+
+    input.value = '';
+    input.focus();
+    if (statusEl) statusEl.textContent = '📡 Hazır — kitabı NFC okuyucuya okutun.';
+
+    // Öğrenci başka bir alana (örn. kitap arama kutusuna) tıklasa da
+    // okuyucunun veriyi doğru yere yazabilmesi için fokusu periyodik
+    // olarak NFC input'una geri al. Kullanıcı bilerek başka bir alana
+    // yazı yazıyorsa (örn. arama kutusuna), o input fokustaysa dokunma.
+    if (nfcRefocusInterval) clearInterval(nfcRefocusInterval);
+    nfcRefocusInterval = setInterval(() => {
+      const active = document.activeElement;
+      const searchInput = document.getElementById('bookSearchInput');
+      if (active === searchInput) return; // kullanıcı manuel arama yapıyor
+      if (active !== input) input.focus();
+    }, 1500);
+  }
+
+  function stopNfcScan() {
+    if (nfcRefocusInterval) {
+      clearInterval(nfcRefocusInterval);
+      nfcRefocusInterval = null;
+    }
+  }
+
+  document.getElementById('nfcTagInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const nfcTag = this.value.trim();
+      this.value = '';
+      if (nfcTag) handleNfcTagScanned(nfcTag);
+    }
+  });
+
+  function handleNfcTagScanned(nfcTag) {
+    if (!currentStudent) return;
+    const statusEl = document.getElementById('nfcStatus');
+    if (statusEl) statusEl.textContent = '🔎 Kontrol ediliyor...';
+
+    fetch('/api/transactions/checkout-nfc', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ student_id: currentStudent.id, nfc_tag: nfcTag })
+    })
+      .then(r => r.json())
+      .then(result => {
+        if (result.success) {
+          const title = result.transaction.resource_title;
+          addTransactionCard('checkout', title);
+          loadCheckedOutBooks();
+          if (statusEl) statusEl.textContent = `✅ "${title}" NFC ile ödünç alındı.`;
+        } else {
+          if (statusEl) statusEl.textContent = '❌ ' + (result.message || 'İşlem başarısız.');
+        }
+      })
+      .catch(() => {
+        if (statusEl) statusEl.textContent = '❌ Bağlantı hatası.';
+      })
+      .finally(() => {
+        document.getElementById('nfcTagInput').focus();
+      });
+  }
+
+
+  function addTransactionCard(type, title) {
+    transactionLog.unshift({ type, title, time: new Date() });
+    renderTransactionLog();
+  }
+
+  function renderTransactionLog() {
+    const el = document.getElementById('transactionLog');
+    el.innerHTML = '';
+    if (transactionLog.length === 0) return;
+
+    transactionLog.forEach(t => {
+      const card = document.createElement('div');
+      const isCheckout = t.type === 'checkout';
+      card.className = 'info-card';
+      card.style.cssText = isCheckout
+        ? ''
+        : 'background:#f0fdf4;border-color:#86efac;color:#166534;';
+      card.innerHTML = isCheckout
+        ? `📖 <strong>${escHtml(t.title)}</strong> ödünç alındı.<br><span style="color:#666">${escHtml(currentStudent.name)} adlı öğrenci tarafından</span>`
+        : `✅ <strong>${escHtml(t.title)}</strong> iade edildi.<br><span style="color:#14532d">${escHtml(currentStudent.name)} adlı öğrenci tarafından</span>`;
+      el.appendChild(card);
+    });
+  }
+
+  /* ── Yardımcı ── */
+  function escHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
   function doSearch() {
-    const q = document.getElementById('searchInput').value.trim();
-    if (q) alert('Aranıyor: ' + q);
+    const searchInput = document.getElementById('searchInput');
+    const query = searchInput.value.trim();
+    const booksListLabel = document.querySelector('.books-list-label');
+    const catalogTableBody = document.querySelector('#catalogTableBody');
+
+    // Show loading state in the catalog table
+    if (catalogTableBody) {
+      catalogTableBody.innerHTML = '<tr><td colspan="5">Kaynaklar yükleniyor...</td></tr>';
+    }
+
+    // Search via API
+    fetch(`/api/resources?q=${encodeURIComponent(query)}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          populateCatalogTable(data.resources);
+          // Update the books-list-label to show search results count
+          if (booksListLabel) {
+            if (query) {
+              booksListLabel.textContent = `Arama Sonuçları (${data.count} kaynak bulundu)`;
+            } else {
+              booksListLabel.textContent = 'Kaynaklar';
+            }
+          }
+        } else {
+          showErrorInCatalog('Kaynaklar yüklenirken bir hata oluştu.');
+        }
+      })
+      .catch(error => {
+        showErrorInCatalog('Sunucuya bağlanılamadı.');
+        console.error('Error:', error);
+      });
+  }
+
+  function populateCatalogTable(resources) {
+    const catalogTableBody = document.querySelector('#catalogTableBody');
+    if (!catalogTableBody) return;
+
+    catalogTableBody.innerHTML = '';
+
+    if (resources.length === 0) {
+      const noDataRow = document.createElement('tr');
+      noDataRow.innerHTML = '<td colspan="5">Aramanızla eşleşen kaynak bulunamadı.</td>';
+      catalogTableBody.appendChild(noDataRow);
+      return;
+    }
+
+    resources.forEach(resource => {
+      const row = document.createElement('tr');
+      const isDigital = resource.resource_type === 'digital';
+
+      const nameCell = document.createElement('td');
+      const nameStrong = document.createElement('strong');
+      nameStrong.textContent = resource.title;
+      nameCell.appendChild(nameStrong);
+
+      const authorCell = document.createElement('td');
+      authorCell.textContent = resource.author || '-';
+
+      const tagsCell = document.createElement('td');
+      tagsCell.textContent = resource.tags || '-';
+
+      const statusCell = document.createElement('td');
+      if (isDigital) {
+        statusCell.textContent = '—';
+      } else {
+        const badge = document.createElement('span');
+        badge.className = 'status-badge ' + (resource.is_available ? 'status-active' : 'status-checked');
+        badge.textContent = resource.is_available ? 'Aktif' : 'Ödünç Alındı';
+        statusCell.appendChild(badge);
+      }
+
+      const actionCell = document.createElement('td');
+      if (isDigital) {
+        const exportBtn = document.createElement('button');
+        exportBtn.className = 'btn-disa';
+        exportBtn.textContent = '📤 Dışa Aktar';
+        exportBtn.addEventListener('click', () => downloadResource(resource.id, resource.title, resource.file_path));
+        actionCell.appendChild(exportBtn);
+      }
+
+      row.append(nameCell, authorCell, tagsCell, statusCell, actionCell);
+      catalogTableBody.appendChild(row);
+    });
+  }
+
+  // Downloads a digital resource's file. Where supported, this lets the
+  // user pick exactly where to save it (File System Access API); otherwise
+  // it falls back to the browser's normal download behavior.
+  async function downloadResource(resourceId, title, filePath) {
+    const ext = filePath && filePath.includes('.') ? filePath.slice(filePath.lastIndexOf('.')) : '';
+    const suggestedName = (title || 'dosya') + ext;
+
+    try {
+      const response = await fetch(`/api/resources/${resourceId}/download`);
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        alert('Dışa aktarma başarısız: ' + (err.message || response.statusText));
+        return;
+      }
+      const blob = await response.blob();
+
+      if (window.showSaveFilePicker) {
+        const handle = await window.showSaveFilePicker({ suggestedName });
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = suggestedName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      if (error.name !== 'AbortError') { // user cancelled the save dialog
+        alert('Dışa aktarma sırasında bir hata oluştu: ' + error.message);
+        console.error('Error:', error);
+      }
+    }
+  }
+
+  function showErrorInCatalog(message) {
+    const catalogTableBody = document.querySelector('#catalogTable tbody');
+    if (catalogTableBody) {
+      catalogTableBody.innerHTML = `<tr><td colspan="5" style="color: #991b1b;">${message}</td></tr>`;
+    }
   }
 
   function adminLogin() {
     const pass = document.getElementById('adminPass').value;
     const msg  = document.getElementById('adminMsg');
-    if (pass === 'yogurt') {
-      msg.innerHTML = '<strong>✅ Giriş başarılı!</strong> Admin sayfasına yönlendiriliyorsunuz...';
-      msg.style.background = '#f0fdf4';
-      msg.style.borderColor = '#86efac';
-      msg.style.color = '#166534';
-      setTimeout(() => { window.location.href = 'admin.html'; }, 1000);
-    } else {
-      msg.innerHTML = '<strong>❌ Hatalı şifre.</strong> Lütfen tekrar deneyin.';
+
+    // Show loading state
+    msg.innerHTML = 'Doğrulama yapılıyor...';
+    msg.style.background = '#fffbdd';
+    msg.style.borderColor = '#fef08a';
+    msg.style.color = '#92400e';
+    msg.style.display = 'block';
+
+    // Send AJAX request to validate admin credentials
+    fetch('/api/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ password: pass })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        msg.innerHTML = '<strong>✅ Giriş başarılı!</strong> Admin sayfasına yönlendiriliyorsunuz...';
+        msg.style.background = '#f0fdf4';
+        msg.style.borderColor = '#86efac';
+        msg.style.color = '#166534';
+        setTimeout(() => { window.location.href = 'admin.html'; }, 1000);
+      } else {
+        msg.innerHTML = '<strong>❌ Hatalı şifre.</strong> Lütfen tekrar deneyin.';
+        msg.style.background = '#fff1f2';
+        msg.style.borderColor = '#fecdd3';
+        msg.style.color = '#991b1b';
+      }
+    })
+    .catch(error => {
+      msg.innerHTML = '<strong>❌ Bir hata oluştu.</strong> Lütfen tekrar deneyin.';
       msg.style.background = '#fff1f2';
       msg.style.borderColor = '#fecdd3';
       msg.style.color = '#991b1b';
-    }
+      console.error('Error:', error);
+    });
   }
+
+// Set the IP address in the footer
+document.addEventListener('DOMContentLoaded', function() {
+  const ipAddressElement = document.getElementById('ipAddress');
+  if (ipAddressElement) {
+    ipAddressElement.textContent = window.location.host;
+  }
+  // Load initial catalog data
+  doSearch('');
+});
 </script></body>
 </html>

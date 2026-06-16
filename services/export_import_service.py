@@ -1,7 +1,7 @@
 import os
 import sqlite3
 import shutil
-from database import DATABASE_PATH
+from database import get_database_path
 
 def export_database(export_path=None):
     """Export the database to a file"""
@@ -9,7 +9,7 @@ def export_database(export_path=None):
         export_path = f"library_backup_{int(os.time())}.db"
 
     # Copy the database file
-    shutil.copy2(DATABASE_PATH, export_path)
+    shutil.copy2(get_database_path(), export_path)
     return export_path
 
 def import_database(import_path):
@@ -22,10 +22,10 @@ def import_database(import_path):
         raise ValueError("Import file must be a .db file")
 
     # Backup current database
-    backup_path = f"{DATABASE_PATH}.backup_{int(os.time())}"
-    shutil.copy2(DATABASE_PATH, backup_path)
+    backup_path = f"{get_database_path()}.backup_{int(os.time())}"
+    shutil.copy2(get_database_path(), backup_path)
 
     # Replace current database with imported one
-    shutil.copy2(import_path, DATABASE_PATH)
+    shutil.copy2(import_path, get_database_path())
 
     return True

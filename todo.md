@@ -1,0 +1,2 @@
+öğrenci numarası gilirdikten sonra kitapları okut tuşuna basılıdğında öğrenci numarası girme textboxu ve kitapları okut tuşu gizlenir 
+öğrenciler kitapların üzerindeki nfc tagleri okuyucuya okutarak da kitap ödünç alabilir

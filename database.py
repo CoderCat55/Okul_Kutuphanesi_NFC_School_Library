@@ -65,6 +65,7 @@ def init_db():
                 CHECK (resource_type IN ('physical', 'digital')),
                 tags TEXT,
                 file_path TEXT,
+                nfc_tag TEXT UNIQUE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 is_available BOOLEAN DEFAULT 1
             )
@@ -92,6 +93,19 @@ def init_db():
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+
+        # Migration: add nfc_tag column if upgrading from an older schema
+        # where the resources table was created without it.
+        cursor.execute("PRAGMA table_info(resources)")
+        existing_columns = {row[1] for row in cursor.fetchall()}
+        if 'nfc_tag' not in existing_columns:
+            print(f"[DEBUG] init_db() migrating: adding nfc_tag column")  # Debug
+            cursor.execute('ALTER TABLE resources ADD COLUMN nfc_tag TEXT')
+            cursor.execute(
+                'CREATE UNIQUE INDEX IF NOT EXISTS idx_resources_nfc_tag '
+                'ON resources(nfc_tag) WHERE nfc_tag IS NOT NULL'
+            )
+
         print(f"[DEBUG] init_db() committing transaction")  # Debug
         conn.commit()
         print(f"[DEBUG] init_db() transaction committed")  # Debug

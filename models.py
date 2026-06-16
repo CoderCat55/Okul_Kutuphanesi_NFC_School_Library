@@ -74,14 +74,14 @@ class Student:
 class Resource:
     @staticmethod
     def create(uuid, title, author=None, language=None, shelf_location=None,
-               resource_type='physical', tags=None, file_path=None):
+               resource_type='physical', tags=None, file_path=None, nfc_tag=None):
         with get_db_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 '''INSERT INTO resources
-                   (uuid, title, author, language, shelf_location, resource_type, tags, file_path)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
-                (uuid, title, author, language, shelf_location, resource_type, tags, file_path)
+                   (uuid, title, author, language, shelf_location, resource_type, tags, file_path, nfc_tag)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                (uuid, title, author, language, shelf_location, resource_type, tags, file_path, nfc_tag)
             )
             conn.commit()
             return Resource.find_by_id(cursor.lastrowid)
@@ -103,6 +103,7 @@ class Resource:
                     resource_type=row['resource_type'],
                     tags=row['tags'],
                     file_path=row['file_path'],
+                    nfc_tag=row['nfc_tag'],
                     created_at=row['created_at'],
                     is_available=bool(row['is_available'])
                 )
@@ -125,13 +126,37 @@ class Resource:
                     resource_type=row['resource_type'],
                     tags=row['tags'],
                     file_path=row['file_path'],
+                    nfc_tag=row['nfc_tag'],
+                    created_at=row['created_at'],
+                    is_available=bool(row['is_available'])
+                )
+            return None
+
+    @staticmethod
+    def find_by_nfc_tag(nfc_tag):
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM resources WHERE nfc_tag = ?', (nfc_tag,))
+            row = cursor.fetchone()
+            if row:
+                return Resource(
+                    id=row['id'],
+                    uuid=row['uuid'],
+                    title=row['title'],
+                    author=row['author'],
+                    language=row['language'],
+                    shelf_location=row['shelf_location'],
+                    resource_type=row['resource_type'],
+                    tags=row['tags'],
+                    file_path=row['file_path'],
+                    nfc_tag=row['nfc_tag'],
                     created_at=row['created_at'],
                     is_available=bool(row['is_available'])
                 )
             return None
 
     def __init__(self, id, uuid, title, author=None, language=None, shelf_location=None,
-                 resource_type='physical', tags=None, file_path=None,
+                 resource_type='physical', tags=None, file_path=None, nfc_tag=None,
                  created_at=None, is_available=True):
         self.id = id
         self.uuid = uuid
@@ -142,6 +167,7 @@ class Resource:
         self.resource_type = resource_type
         self.tags = tags
         self.file_path = file_path
+        self.nfc_tag = nfc_tag
         self.created_at = created_at
         self.is_available = is_available
 
