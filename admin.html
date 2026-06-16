@@ -332,7 +332,7 @@
     <h1>🛠 Admin Paneli</h1>
     <div class="meta">Kütüphane Yönetim Sistemi</div>
   </div>
-  <a href="index.html">← Ana Sayfaya Dön</a>
+  <a href="/">← Ana Sayfaya Dön</a> 
 </div>
 
 <div class="admin-grid">
@@ -344,7 +344,7 @@
     <h2>Sistem Bilgisi</h2>
 
     <div class="sidebar-info">
-      <p><strong>IP Adresi</strong>http://192.168.x.x</p>
+      <p><strong>IP Adresi</strong><span id="ipAddress"></span></p>
     </div>
 
     <div class="sidebar-section">
@@ -354,7 +354,7 @@
         <p>Dosya seçmek için tıklayın</p>
         <input type="file" id="studentFile" style="display:none" accept=".csv,.xlsx,.xls">
       </div>
-      <button class="btn btn-primary" onclick="uploadStudents()">Yükle</button>
+      <button class="btn btn-primary" onclick="uploadStudents()">Yükle</button><!--Delete this button and automatically upload it when user choose  file-->
     </div>
 
     <div class="sep"></div>
@@ -362,7 +362,12 @@
     <div class="sidebar-section">
       <h3>Veri Tabanı</h3>
       <button class="btn btn-gray" onclick="exportDB()">📤 Veri Tabanını Dışa Aktar</button>
-      <button class="btn btn-gray" onclick="importDB()">📥 Veri Tabanını Yükle</button>
+      <div class="upload-zone" onclick="document.getElementById('importFile').click()">
+        <div class="icon">⬆️</div>
+        <p>Dosya seçmek için tıklayın</p>
+        <input type="file" id="importFile" style="display:none" accept=".db">
+      </div>
+      <button class="btn btn-gray" onclick="importDB()">📥 Veri Tabanını Yükle</button> <!--Delete this button and automatically upload it when user choose  file-->
     </div>
 
   </div>
@@ -443,6 +448,11 @@
     </div>
     <ul class="file-list" id="fileList"></ul>
 
+    <div class="form-row">
+      <label>Başlık</label>
+      <input type="text" placeholder="Kaynak başlığı" id="dTitle" />
+    </div>
+
     <div class="sep"></div>
 
     <div class="form-row">
@@ -477,10 +487,10 @@
        BOX 4 — Sistem Aktiviteleri
        ══════════════════════════════════ -->
   <!-- ══════════════════════════════════════════════════════════════════════
-       BOX 4 — Kaynaklar
+       BOX 4 — Öğrenci Aktiviteleri
        ════════════════════════════════════════════════════════════════════ -->
   <div class="panel activity">
-    <h2>Kaynaklar</h2>
+    <h2>Öğrenci Aktiviteleri</h2>
 
     <!-- Search bar -->
     <div class="search-bar">
@@ -488,19 +498,18 @@
       <button class="btn btn-primary" onclick="doSearch()">Ara</button>
     </div>
 
-    <!-- Resources table -->
+    <!-- Activities table -->
     <table class="activity-table">
       <thead>
         <tr>
-          <th>Kaynak Adı</th>
-          <th>Yazar</th>
-          <th>Etiketler</th>
-          <th>Durum</th>
+          <th>İşlem</th>
+          <th>Detaylar</th>
+          <th>Tarih</th>
           <th></th>
         </tr>
       </thead>
-      <tbody id="resourcesTableBody">
-        <!-- Resources will be loaded here via AJAX -->
+      <tbody id="activitiesTableBody">
+        <!-- Activities will be loaded here via AJAX -->
       </tbody>
     </table>
   </div>
@@ -545,29 +554,29 @@
     }
   });
 
-  // Load resources on page load
-  document.addEventListener('DOMContentLoaded', loadResources);
+  // Load activities on page load
+  document.addEventListener('DOMContentLoaded', loadActivities);
 
-  function loadResources() {
-    const resourcesTableBody = document.getElementById('resourcesTableBody');
+  function loadActivities() {
+    const activitiesTableBody = document.getElementById('activitiesTableBody');
 
     // Show loading state
     const loadingMessage = document.createElement('tr');
-    loadingMessage.innerHTML = '<td colspan="5">Kaynaklar yükleniyor...</td>';
+    loadingMessage.innerHTML = '<td colspan="4">Aktiviteler yükleniyor...</td>';
     loadingMessage.className = 'loading';
-    if (resourcesTableBody) {
-      resourcesTableBody.innerHTML = '';
-      resourcesTableBody.appendChild(loadingMessage);
+    if (activitiesTableBody) {
+      activitiesTableBody.innerHTML = '';
+      activitiesTableBody.appendChild(loadingMessage);
     }
 
-    // Fetch resources from API
-    fetch('/api/resources')
+    // Fetch activities from API
+    fetch('/api/activity')
       .then(response => response.json())
       .then(data => {
         if (data.success) {
-          displayResources(data.resources);
+          displayActivities(data.activity);
         } else {
-          showError('Kaynaklar yüklenirken bir hata oluştu.');
+          showError('Aktiviteler yüklenirken bir hata oluştu.');
         }
       })
       .catch(error => {
@@ -576,76 +585,45 @@
       });
   }
 
-  function displayResources(resources) {
-    const resourcesTableBody = document.getElementById('resourcesTableBody');
-    if (!resourcesTableBody) return;
+  function displayActivities(activities) {
+    const activitiesTableBody = document.getElementById('activitiesTableBody');
+    if (!activitiesTableBody) return;
 
-    resourcesTableBody.innerHTML = '';
+    activitiesTableBody.innerHTML = '';
 
-    if (resources.length === 0) {
+    if (activities.length === 0) {
       const noDataRow = document.createElement('tr');
-      noDataRow.innerHTML = '<td colspan="5">Henüz kaynak eklenmedi.</td>';
-      resourcesTableBody.appendChild(noDataRow);
+      noDataRow.innerHTML = '<td colspan="4">Henüz aktivite kaydı bulunmuyor.</td>';
+      activitiesTableBody.appendChild(noDataRow);
       return;
     }
 
-    resources.forEach(resource => {
+    activities.forEach(activity => {
       const row = document.createElement('tr');
       row.innerHTML = `
-        <td><strong>${resource.title}</strong></td>
-        <td>${resource.author || '-'}</td>
-        <td>${resource.tags || '-'}</td>
-        <td><span class="status-badge ${resource.is_available ? 'status-active' : 'status-checked'}">
-            ${resource.is_available ? 'Aktif' : 'Ödünç Alındı'}
-          </span></td>
-        <td>
-          ${resource.file_path ? `<button class="btn-disa" onclick="downloadResource('${resource.file_path}')">Dışa Aktar</button>` : ''}
-        </td>
+        <td><strong>${activity.action}</strong></td>
+        <td>${activity.details || '-'}</td>
+        <td>${activity.timestamp || '-'}</td>
+        <td></td>
       `;
-      resourcesTableBody.appendChild(row);
+      activitiesTableBody.appendChild(row);
     });
   }
 
   function showError(message) {
-    const resourcesTableBody = document.getElementById('resourcesTableBody');
-    if (resourcesTableBody) {
+    const activitiesTableBody = document.getElementById('activitiesTableBody');
+    if (activitiesTableBody) {
       const errorRow = document.createElement('tr');
-      errorRow.innerHTML = `<td colspan="5" style="color: #991b1b;">${message}</td>`;
-      resourcesTableBody.innerHTML = '';
-      resourcesTableBody.appendChild(errorRow);
+      errorRow.innerHTML = `<td colspan="4" style="color: #991b1b;">${message}</td>`;
+      activitiesTableBody.innerHTML = '';
+      activitiesTableBody.appendChild(errorRow);
     }
   }
 
   // Enhance the search functionality
   function doSearch() {
-    const searchInput = document.getElementById('searchInput');
-    const query = searchInput.value.trim();
-
-    if (!query) {
-      loadResources(); // Load all if empty
-      return;
-    }
-
-    // Show loading
-    const resourcesTableBody = document.getElementById('resourcesTableBody');
-    if (resourcesTableBody) {
-      resourcesTableBody.innerHTML = '<tr><td colspan="5">Arama yapılıyor...</td></tr>';
-    }
-
-    // Search via API
-    fetch(`/api/resources/search?q=${encodeURIComponent(query)}`)
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          displayResources(data.resources);
-        } else {
-          showError('Arama sırasında bir hata oluştu.');
-        }
-      })
-      .catch(error => {
-        showError('Sunucuya bağlanılamadı.');
-        console.error('Error:', error);
-      });
+    // For activities section, we'll just load all activities (search not implemented for activity log yet)
+    loadActivities();
   }
 
   // Update the existing doSearch function to use AJAX
@@ -786,8 +764,8 @@
         // Uncheck all tags
         const checks = document.getElementById('bTagGrid').querySelectorAll('.tag-check input');
         checks.forEach(cb => cb.checked = false);
-        // Reload resources
-        loadResources();
+        // Reload activities
+        loadActivities();
       } else {
         alert('Kaydetme başarısız: ' + data.message);
       }
@@ -810,22 +788,32 @@
       nameList.push(f.name);
     }
     names.textContent = input.files.length + ' dosya seçildi: ' + nameList.join(', ');
+
+    // Set title to filename without extension if title is empty
+    if (input.files.length > 0 && document.getElementById('dTitle').value.trim() === '') {
+      const fileName = input.files[0].name;
+      const titleWithoutExtension = fileName.replace(/\.[^/.]+$/, "");
+      document.getElementById('dTitle').value = titleWithoutExtension;
+    }
   }
 
   function saveDijital() {
     const f = document.getElementById('dijFile').files;
     if (!f.length) { alert('Lütfen en az bir dosya seçin.'); return; }
 
+    const title = document.getElementById('dTitle').value.trim();
+    if (!title) {
+        alert('Lütfen kaynak başlığını girin.');
+        return;
+    }
+
     // We'll handle the first file for simplicity (multiple file upload not implemented in API yet)
     const file = f[0];
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('title', title);
 
-    // Get other metadata from form
-    const titel = document.getElementById('dAd')?.value.trim() || '';
-    const yazar = document.getElementById('dYazar')?.value.trim() || '';
-    const dil = document.querySelector('input[name="dDil"]:checked')?.value || '';
-    const raf = document.getElementById('dRaf')?.value.trim() || '';
+    // Get tags from form
     const tagGrid = document.getElementById('dTagGrid');
     const tags = Array.from(tagGrid.querySelectorAll('.tag-check input:checked'))
                       .map(cb => cb.parentNode.textContent.trim());
@@ -834,10 +822,6 @@
     const allTags = [...tags, ...customTags].join(',');
 
     // Append metadata to formData
-    formData.append('title', titel);
-    formData.append('author', yazar);
-    formData.append('language', dil);
-    formData.append('shelf_location', raf);
     formData.append('tags', allTags);
     formData.append('resource_type', 'digital');
 
@@ -850,24 +834,22 @@
       if (data.success) {
         alert(f.length + ' dijital kaynak kaydedildi.');
         // Clear form
-        document.getElementById('dAd').value = '';
-        document.getElementById('dYazar').value = '';
-        document.getElementById('dRaf').value = '';
         document.getElementById('dCustomTag').value = '';
         document.getElementById('dijFile').value = '';
+        document.getElementById('dTitle').value = '';
         document.getElementById('uploadedNames').textContent = 'Henüz dosya seçilmedi.';
         document.getElementById('fileList').innerHTML = '';
         // Uncheck all tags
         const checks = document.getElementById('dTagGrid').querySelectorAll('.tag-check input');
         checks.forEach(cb => cb.checked = false);
-        // Reload resources
-        loadResources();
+        // Reload activities
+        loadActivities();
       } else {
         alert('Kaydetme başarısız: ' + data.message);
       }
     })
     .catch(error => {
-      alert('Bir hata oluztu: ' + error.message);
+      alert('Bir hata oluştu: ' + error.message);
       console.error('Error:', error);
     });
   }
@@ -878,5 +860,13 @@
     // For now, we'll just show an alert
     alert('Dosya indirme işlemi şu anda desteklenmiyor. Dosya yolu: ' + filePath);
   }
+
+// Set the IP address in the footer
+document.addEventListener('DOMContentLoaded', function() {
+  const ipAddressElement = document.getElementById('ipAddress');
+  if (ipAddressElement) {
+    ipAddressElement.textContent = window.location.host;
+  }
+});
 </script></body>
 </html>
