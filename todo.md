@@ -1,2 +1,1 @@
-öğrenci numarası gilirdikten sonra kitapları okut tuşuna basılıdğında öğrenci numarası girme textboxu ve kitapları okut tuşu gizlenir 
-öğrenciler kitapların üzerindeki nfc tagleri okuyucuya okutarak da kitap ödünç alabilir
+the searching and filtering books part is a decoy I need it to actually work.
