@@ -9,8 +9,8 @@ import io
 import webbrowser
 from threading import Timer
 from dotenv import load_dotenv
-from services.export_import_service import export_database, import_database
-from services.upload_service import save_uploaded_file, allowed_file
+from export_import_service import export_database, import_database
+from upload_service import save_uploaded_file, allowed_file
 from werkzeug.utils import secure_filename
 
 load_dotenv()
