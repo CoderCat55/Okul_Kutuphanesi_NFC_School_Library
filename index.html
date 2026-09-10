@@ -386,13 +386,13 @@
 
     <!-- Filters -->
     <div class="filters">
-      <label class="filter-chip"><input type="checkbox"> 3. Sınıf</label>
-      <label class="filter-chip"><input type="checkbox"> 10. Sınıf</label>
-      <label class="filter-chip"><input type="checkbox" checked> Dijital Kaynak</label>
-      <label class="filter-chip"><input type="checkbox" checked> Basılı Kaynak</label>
-      <label class="filter-chip"><input type="checkbox"> Dil</label>
-      <label class="filter-chip"><input type="checkbox"> Olimpiyat Matematik</label>
-      <label class="filter-chip"><input type="checkbox"> Olimpiyat Biyoloji</label>
+      <label class="filter-chip"><input type="checkbox" class="tag-filter" value="3. Sınıf" onchange="doSearch()"> 3. Sınıf</label>
+      <label class="filter-chip"><input type="checkbox" class="tag-filter" value="10. Sınıf" onchange="doSearch()"> 10. Sınıf</label>
+      <label class="filter-chip"><input type="checkbox" class="type-filter" value="digital" checked onchange="doSearch()"> Dijital Kaynak</label>
+      <label class="filter-chip"><input type="checkbox" class="type-filter" value="physical" checked onchange="doSearch()"> Basılı Kaynak</label>
+      <label class="filter-chip"><input type="checkbox" class="tag-filter" value="Dil" onchange="doSearch()"> Dil</label>
+      <label class="filter-chip"><input type="checkbox" class="tag-filter" value="Olimpiyat Matematik" onchange="doSearch()"> Olimpiyat Matematik</label>
+      <label class="filter-chip"><input type="checkbox" class="tag-filter" value="Olimpiyat Biyoloji" onchange="doSearch()"> Olimpiyat Biyoloji</label>
     </div>
 
     <!-- Catalog table -->
@@ -809,23 +809,28 @@
       .then(response => response.json())
       .then(data => {
         if (data.success) {
-          populateCatalogTable(data.resources);
-          // Update the books-list-label to show search results count
+          const checkedTypes = Array.from(document.querySelectorAll('.type-filter:checked')).map(cb => cb.value);
+          const checkedTags = Array.from(document.querySelectorAll('.tag-filter:checked')).map(cb => cb.value);
+
+          let filtered = data.resources.filter(r => checkedTypes.includes(r.resource_type));
+
+          if (checkedTags.length > 0) {
+            filtered = filtered.filter(r => {
+              const tags = r.tags || '';
+              return checkedTags.some(t => tags.includes(t));
+            });
+          }
+
+          populateCatalogTable(filtered);
           if (booksListLabel) {
-            if (query) {
-              booksListLabel.textContent = `Arama Sonuçları (${data.count} kaynak bulundu)`;
-            } else {
-              booksListLabel.textContent = 'Kaynaklar';
-            }
+            booksListLabel.textContent = query
+              ? `Arama Sonuçları (${filtered.length} kaynak bulundu)`
+              : 'Kaynaklar';
           }
         } else {
           showErrorInCatalog('Kaynaklar yüklenirken bir hata oluştu.');
         }
       })
-      .catch(error => {
-        showErrorInCatalog('Sunucuya bağlanılamadı.');
-        console.error('Error:', error);
-      });
   }
 
   function populateCatalogTable(resources) {
