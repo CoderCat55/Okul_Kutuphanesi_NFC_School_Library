@@ -416,14 +416,8 @@
 
     <div class="form-row">
       <label>Etiketler (Tag)</label>
-      <div class="tag-grid" id="bTagGrid">
-        <label class="tag-check"><input type="checkbox"> 📖 Okuma Kitabı</label>
-        <label class="tag-check"><input type="checkbox"> 🎓 Akademik</label>
-        <label class="tag-check"><input type="checkbox" checked> ⚗️ Fizik</label>
-        <label class="tag-check"><input type="checkbox"> 📐 Matematik</label>
-        <label class="tag-check"><input type="checkbox"> 🔤 Kince</label>
-        <label class="tag-check"><input type="checkbox"> 📅 Edebiyat Tarihi</label>
-      </div>
+      <div class="tag-grid" id="bTagGrid"> </div>
+
       <!-- Serbest tag girişi: virgülle ayırarak birden fazla tag eklenebilir -->
       <div class="tag-add-row">
         <input type="text" id="bCustomTag" placeholder="Yeni tag... (virgülle ayır: Kimya, 9. Sınıf)" />
@@ -463,12 +457,7 @@
 
     <div class="form-row">
       <label>Etiketler (Tag)</label>
-      <div class="tag-grid" id="dTagGrid">
-        <label class="tag-check"><input type="checkbox" checked> 🏆 Olimpiyat Matematik</label>
-        <label class="tag-check"><input type="checkbox"> 🌍 Almanca</label>
-        <label class="tag-check"><input type="checkbox"> 🏫 3. Sınıf</label>
-        <label class="tag-check"><input type="checkbox"> 🏫 10. Sınıf</label>
-      </div>
+      <div class="tag-grid" id="dTagGrid"> </div>
       <!-- Serbest tag girişi -->
       <div class="tag-add-row">
         <input type="text" id="dCustomTag" placeholder="Yeni tag... (virgülle ayır: Biyoloji, 7. Sınıf)" />
@@ -525,45 +514,97 @@
 
 <script>
   /*
-   * addCustomTags(gridId, inputId)
-   * Textbox'taki değeri virgülle ayırır, her bir parçayı trim eder,
-   * boş olmayanları tag-grid'e checked checkbox olarak ekler.
-   * Aynı tag zaten varsa tekrar eklemez.
-   */
-  function addCustomTags(gridId, inputId) {
-    const input = document.getElementById(inputId);
-    const grid  = document.getElementById(gridId);
-    const raw   = input.value.trim();
-    if (!raw) return;
+ * Shared tag catalog: fetched from /api/tags and rendered into
+ * BOTH bTagGrid and dTagGrid, so physical and digital resources
+ * always see the same list of tags.
+ */
+function loadTagCatalog() {
+  fetch('/api/tags')
+    .then(r => r.json())
+    .then(data => {
+      const tags = (data.success && data.tags) ? data.tags : [];
+      renderTagGrid('bTagGrid', tags);
+      renderTagGrid('dTagGrid', tags);
+    })
+    .catch(err => console.error('Tag catalog load error:', err));
+}
 
-    const tags = raw.split(',').map(t => t.trim()).filter(t => t.length > 0);
+function renderTagGrid(gridId, tags) {
+  const grid = document.getElementById(gridId);
+  if (!grid) return;
 
-    tags.forEach(tagText => {
-      // Aynı isimde tag zaten var mı kontrol et
-      const existing = Array.from(grid.querySelectorAll('.tag-check'));
-      const duplicate = existing.some(el => el.textContent.trim().toLowerCase() === tagText.toLowerCase());
-      if (duplicate) return;
+  // Remember which tags were checked before re-rendering
+  const previouslyChecked = new Set(
+    Array.from(grid.querySelectorAll('.tag-check input:checked'))
+      .map(cb => cb.nextElementSibling.textContent.trim())
+  );
 
-      const label = document.createElement('label');
-      label.className = 'tag-check custom-tag';
-      label.innerHTML = `<input type="checkbox" checked> ${tagText}`;
-      grid.appendChild(label);
-    });
-
-    input.value = '';
-  }
-
-  // Enter tuşuyla da tag eklenebilsin
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') {
-      const active = document.activeElement;
-      if (active && active.id === 'bCustomTag') addCustomTags('bTagGrid', 'bCustomTag');
-      if (active && active.id === 'dCustomTag') addCustomTags('dTagGrid', 'dCustomTag');
-    }
+  grid.innerHTML = '';
+  tags.forEach(tagText => {
+    const wrap = document.createElement('div');
+    wrap.className = 'tag-check-wrap';
+    wrap.innerHTML = `
+      <label class="tag-check">
+        <input type="checkbox" ${previouslyChecked.has(tagText) ? 'checked' : ''}>
+        <span class="tag-text">${tagText}</span>
+      </label>
+      <button type="button" class="tag-del-btn" title="Etiketi sil">✕</button>
+    `;
+    wrap.querySelector('.tag-del-btn').addEventListener('click', () => deleteTagCatalog(tagText));
+    grid.appendChild(wrap);
   });
+}
+
+function deleteTagCatalog(tagText) {
+  if (!confirm(`"${tagText}" etiketini kalıcı olarak silmek istediğinize emin misiniz?`)) return;
+
+  fetch(`/api/tags/${encodeURIComponent(tagText)}`, { method: 'DELETE' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        loadTagCatalog();
+      } else {
+        alert('Etiket silinemedi: ' + (data.message || ''));
+      }
+    })
+    .catch(err => {
+      alert('Bir hata oluştu: ' + err.message);
+      console.error(err);
+    });
+}
+
+function addCustomTags(gridId, inputId) {
+  const input = document.getElementById(inputId);
+  const raw = input.value.trim();
+  if (!raw) return;
+
+  const tags = raw.split(',').map(t => t.trim()).filter(t => t.length > 0);
+
+  Promise.all(tags.map(tagText =>
+    fetch('/api/tags', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: tagText })
+    })
+  )).then(() => {
+    input.value = '';
+    loadTagCatalog();
+  });
+}
+
+// Enter tuşuyla da tag eklenebilsin
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    const active = document.activeElement;
+    if (active && active.id === 'bCustomTag') addCustomTags('bTagGrid', 'bCustomTag');
+    if (active && active.id === 'dCustomTag') addCustomTags('dTagGrid', 'dCustomTag');
+  }
+});
+
 
   // Load activities on page load
   document.addEventListener('DOMContentLoaded', loadActivities);
+  document.addEventListener('DOMContentLoaded', loadTagCatalog);
 
   function loadActivities() {
     const activitiesTableBody = document.getElementById('activitiesTableBody');
@@ -752,7 +793,7 @@
     // Process tags
     const tagGrid = document.getElementById('bTagGrid');
     const tags = Array.from(tagGrid.querySelectorAll('.tag-check input:checked'))
-                      .map(cb => cb.parentNode.textContent.trim());
+                  .map(cb => cb.nextElementSibling.textContent.trim());
     const customTagInput = document.getElementById('bCustomTag');
     const customTags = customTagInput.value.trim().split(',').map(t => t.trim()).filter(t => t.length > 0);
     const allTags = [...tags, ...customTags].join(',');
@@ -839,7 +880,7 @@
     // Get tags from form
     const tagGrid = document.getElementById('dTagGrid');
     const tags = Array.from(tagGrid.querySelectorAll('.tag-check input:checked'))
-                      .map(cb => cb.parentNode.textContent.trim());
+                  .map(cb => cb.nextElementSibling.textContent.trim());
     const customTagInput = document.getElementById('dCustomTag');
     const customTags = customTagInput.value.trim().split(',').map(t => t.trim()).filter(t => t.length > 0);
     const allTags = [...tags, ...customTags].join(',');

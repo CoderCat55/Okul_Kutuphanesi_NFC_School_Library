@@ -386,13 +386,9 @@
 
     <!-- Filters -->
     <div class="filters">
-      <label class="filter-chip"><input type="checkbox" class="tag-filter" value="3. Sınıf" onchange="doSearch()"> 3. Sınıf</label>
-      <label class="filter-chip"><input type="checkbox" class="tag-filter" value="10. Sınıf" onchange="doSearch()"> 10. Sınıf</label>
       <label class="filter-chip"><input type="checkbox" class="type-filter" value="digital" checked onchange="doSearch()"> Dijital Kaynak</label>
       <label class="filter-chip"><input type="checkbox" class="type-filter" value="physical" checked onchange="doSearch()"> Basılı Kaynak</label>
-      <label class="filter-chip"><input type="checkbox" class="tag-filter" value="Dil" onchange="doSearch()"> Dil</label>
-      <label class="filter-chip"><input type="checkbox" class="tag-filter" value="Olimpiyat Matematik" onchange="doSearch()"> Olimpiyat Matematik</label>
-      <label class="filter-chip"><input type="checkbox" class="tag-filter" value="Olimpiyat Biyoloji" onchange="doSearch()"> Olimpiyat Biyoloji</label>
+      <span id="tagFilterContainer"></span>
     </div>
 
     <!-- Catalog table -->
@@ -793,6 +789,29 @@
     return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
+  /*
+ * Loads the shared tag catalog (same source admin.html reads/writes)
+ * and renders it as filter chips, so the homepage always matches
+ * whatever tags exist in the admin panel.
+ */
+function loadTagFilters() {
+  fetch('/api/tags')
+    .then(r => r.json())
+    .then(data => {
+      const container = document.getElementById('tagFilterContainer');
+      if (!container || !data.success) return;
+
+      container.innerHTML = '';
+      data.tags.forEach(tagText => {
+        const label = document.createElement('label');
+        label.className = 'filter-chip';
+        label.innerHTML = `<input type="checkbox" class="tag-filter" value="${tagText}" onchange="doSearch()"> ${tagText}`;
+        container.appendChild(label);
+      });
+    })
+    .catch(err => console.error('Tag filter load error:', err));
+  }
+
   function doSearch() {
     const searchInput = document.getElementById('searchInput');
     const query = searchInput.value.trim();
@@ -974,13 +993,13 @@
     });
   }
 
-// Set the IP address in the footer
 document.addEventListener('DOMContentLoaded', function() {
   const ipAddressElement = document.getElementById('ipAddress');
   if (ipAddressElement) {
     ipAddressElement.textContent = window.location.host;
   }
-  // Load initial catalog data
+  // Load tag filters, then the initial catalog data
+  loadTagFilters();
   doSearch('');
 });
 </script></body>

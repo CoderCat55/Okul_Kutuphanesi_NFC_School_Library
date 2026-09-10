@@ -52,6 +52,14 @@ def init_db():
             )
         ''')
         print(f"[DEBUG] init_db() students table created")  # Debug
+
+        #Tag table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS tags (
+                id INTEGER PRIMARY KEY,
+                name TEXT UNIQUE NOT NULL
+            )
+        ''')
         # Resources table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS resources (

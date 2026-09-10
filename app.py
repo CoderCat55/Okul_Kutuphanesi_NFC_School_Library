@@ -158,6 +158,9 @@ def add_physical_resource():
     if isinstance(tags, list):
         tags = ','.join(tags)
 
+    for t in [t.strip() for t in tags.split(',') if t.strip()]:
+        cursor.execute('INSERT OR IGNORE INTO tags (name) VALUES (?)', (t,))
+
     # NFC tag (kart numarası) - basılı kaynaklara opsiyonel olarak eklenir
     nfc_tag = (data.get('nfc_tag') or '').strip() or None
 
@@ -209,7 +212,9 @@ def add_digital_resource():
     title = request.form.get('title')
     tags = request.form.get('tags', '')
     resource_type = request.form.get('resource_type', 'digital')
-
+    
+    for t in [t.strip() for t in tags.split(',') if t.strip()]:
+        cursor.execute('INSERT OR IGNORE INTO tags (name) VALUES (?)', (t,))
     try:
         # Save uploaded file
         file_path = save_uploaded_file(file)
@@ -248,6 +253,33 @@ def add_digital_resource():
         }), 201
     except Exception as e:
         return jsonify({'success': False, 'message': f'Failed to add digital resource: {str(e)}'}), 500
+
+#tags api
+@app.route('/api/tags', methods=['GET'])
+def get_tags():
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT name FROM tags ORDER BY name COLLATE NOCASE')
+        return jsonify({'success': True, 'tags': [r['name'] for r in cursor.fetchall()]})
+
+@app.route('/api/tags', methods=['POST'])
+def add_tag():
+    name = (request.get_json() or {}).get('name', '').strip()
+    if not name:
+        return jsonify({'success': False, 'message': 'Tag name required'}), 400
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('INSERT OR IGNORE INTO tags (name) VALUES (?)', (name,))
+        conn.commit()
+    return jsonify({'success': True}), 201
+
+@app.route('/api/tags/<path:name>', methods=['DELETE'])
+def delete_tag(name):
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM tags WHERE name = ?', (name,))
+        conn.commit()
+    return jsonify({'success': True})
 
 # Transaction endpoints (Checkout/Return)
 @app.route('/api/transactions/checkout', methods=['POST'])
