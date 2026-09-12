@@ -51,16 +51,34 @@
   .admin-grid {
     display: grid;
     grid-template-columns: 220px 1fr 1fr;
-    grid-template-rows: auto auto;
+    grid-template-rows: auto auto auto;
     gap: 18px;
     max-width: 1200px;
     margin: 0 auto;
   }
-
+  .autobook { grid-column: 1 / 4; grid-row: 2; }
   .sidebar { grid-column: 1; grid-row: 1; }
   .add-basili { grid-column: 2; grid-row: 1; }
   .add-dijital { grid-column: 3; grid-row: 1; }
-  .activity { grid-column: 1 / 4; grid-row: 2; }
+  .activity { grid-column: 1 / 4; grid-row: 3; }
+
+  .autobook-layout { 
+    display: grid; 
+    grid-template-columns: 2fr 1fr 1fr; gap: 18px; 
+    align-items: start; 
+  }
+
+  .autobook-camera img { 
+    width: 100%; 
+    border-radius: 8px; 
+    display: block; 
+  }
+
+  .autobook-col { 
+    display: flex; 
+    flex-direction: column; 
+    gap: 14px;
+  }
 
   .panel {
     background: #ffffff;
@@ -476,9 +494,57 @@
     <div class="sep"></div>
     <button class="btn btn-green" onclick="saveDijital()">💾 Kaydet</button>
   </div>
-  <div class="autobook"> <!-- pupose is to add books automatically. -->
-  
+>
+  <div class="panel autobook">
+  <h2>Otomatik Kitap Ekle</h2>
+  <div class="autobook-layout">
+    <div class="autobook-camera">
+      <img id="autobookStream" src="/api/camera/stream" alt="Kamera görüntüsü" />
+    </div>
+    <div class="autobook-col">
+      <div class="form-row">
+        <label>NFC Kart No</label>
+        <input type="text" placeholder="Kart okuyucu (R20C-USB) ile okutun" id="aNfcTag" autocomplete="off" />
+        <div class="tag-hint">İmleci bu alana getirip kitabın NFC etiketini okuyucuya okutun. Boş bırakılırsa bu kaynak NFC ile ödünç alınamaz.</div>
+      </div>
+      <button type="button" class="btn btn-gray" onclick="captureAndFillBasili()">📷 Fotoğraf Çek → Gemini</button>
+      <div class="form-row">
+        <label>Raf Yeri</label>
+        <input type="text" placeholder="A-12" id="aRaf" />
+      </div>
+      <div class="form-row">
+        <label>Etiketler (Tag)</label>
+        <div class="tag-grid" id="aTagGrid"></div>
+        <div class="tag-add-row">
+          <input type="text" id="aCustomTag" placeholder="Yeni tag... (virgülle ayır: Kimya, 9. Sınıf)" />
+          <button onclick="addCustomTags('aTagGrid', 'aCustomTag')">+ Ekle</button>
+        </div>
+        <div class="tag-hint">Birden fazla tag için virgülle ayırın: "Kimya, 9. Sınıf, Olimpiyat"</div>
+      </div>
+      <div class="sep"></div>
+      <button class="btn btn-primary" onclick="saveBasili()">💾 Kaydet</button>
+    </div>
+    <div class="autobook-col">
+      <div class="form-row">
+        <label>Ad</label>
+        <input type="text" placeholder="Kaynak adı" id="aAd" />
+      </div>
+      <div class="form-row">
+        <label>Yazar</label>
+        <input type="text" placeholder="Yazar adı" id="aYazar" />
+      </div>
+      <div class="form-row">
+        <label>Dil</label>
+        <div class="lang-row">
+          <label><input type="radio" name="aDil" value="TR" checked> TR</label>
+          <label><input type="radio" name="aDil" value="EN"> EN</label>
+          <label><input type="radio" name="aDil" value="DE"> DE</label>
+        </div>
+      </div>
+    </div>
   </div>
+</div>
+
 
   <!-- ══════════════════════════════════
        BOX 4 — Sistem Aktiviteleri
@@ -518,11 +584,33 @@
  * BOTH bTagGrid and dTagGrid, so physical and digital resources
  * always see the same list of tags.
  */
+
+ function captureAndFillBasili() {
+  fetch('/api/camera/capture', { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      if (!data.success) {
+        alert('Görüntü işlenemedi: ' + (data.message || 'Bilinmeyen hata'));
+        return;
+      }
+      document.getElementById('aAd').value = data.title || '';
+      document.getElementById('aYazar').value = data.author || '';
+      const lang = (data.language || 'TR').toUpperCase();
+      const radio = document.querySelector(`input[name="aDil"][value="${lang}"]`);
+      if (radio) radio.checked = true;
+    })
+    .catch(err => {
+      alert('Bir hata oluştu: ' + err.message);
+      console.error(err);
+    });
+}
+
 function loadTagCatalog() {
   fetch('/api/tags')
     .then(r => r.json())
     .then(data => {
       const tags = (data.success && data.tags) ? data.tags : [];
+      renderTagGrid('aTagGrid', tags);
       renderTagGrid('bTagGrid', tags);
       renderTagGrid('dTagGrid', tags);
     })

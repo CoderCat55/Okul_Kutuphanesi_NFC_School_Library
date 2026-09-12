@@ -48,3 +48,5 @@ the functionality of this part would be to livestream camera also capture a phot
 another explanation I would capture a frame when user pressed the button send t to gemini to fill up the right column. 
 
 do not overcomplicate things but just fix the code. After reviewing code and undertanding how to solve this problem. ell me where to change and what to change specifically 
+how this would be implemented to current system , which parts should be changed which parts should be added and where.
+You may only write which parts of the code I should change and where changes should be made to save time instead of writing the whole script again.

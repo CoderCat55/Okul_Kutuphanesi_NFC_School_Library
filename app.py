@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_file, send_from_directory
+from flask import Flask, request, jsonify, send_file, send_from_directory,Response
 from database import get_db_connection, init_db
 from models import Student, Resource, Transaction
 import os
@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 from export_import_service import export_database, import_database
 from upload_service import save_uploaded_file, allowed_file
 from werkzeug.utils import secure_filename
+import camera2
 
 load_dotenv()
 
@@ -158,9 +159,6 @@ def add_physical_resource():
     if isinstance(tags, list):
         tags = ','.join(tags)
 
-    for t in [t.strip() for t in tags.split(',') if t.strip()]:
-        cursor.execute('INSERT OR IGNORE INTO tags (name) VALUES (?)', (t,))
-
     # NFC tag (kart numarası) - basılı kaynaklara opsiyonel olarak eklenir
     nfc_tag = (data.get('nfc_tag') or '').strip() or None
 
@@ -174,6 +172,8 @@ def add_physical_resource():
 
     with get_db_connection() as conn:
         cursor = conn.cursor()
+        for t in [t.strip() for t in tags.split(',') if t.strip()]:
+            cursor.execute('INSERT OR IGNORE INTO tags (name) VALUES (?)', (t,))
         cursor.execute(
             '''INSERT INTO resources
                (uuid, title, author, language, shelf_location, resource_type, tags, nfc_tag, is_available)
@@ -213,8 +213,6 @@ def add_digital_resource():
     tags = request.form.get('tags', '')
     resource_type = request.form.get('resource_type', 'digital')
     
-    for t in [t.strip() for t in tags.split(',') if t.strip()]:
-        cursor.execute('INSERT OR IGNORE INTO tags (name) VALUES (?)', (t,))
     try:
         # Save uploaded file
         file_path = save_uploaded_file(file)
@@ -229,6 +227,8 @@ def add_digital_resource():
 
         with get_db_connection() as conn:
             cursor = conn.cursor()
+            for t in [t.strip() for t in tags.split(',') if t.strip()]:
+                cursor.execute('INSERT OR IGNORE INTO tags (name) VALUES (?)', (t,))
             cursor.execute(
                 '''INSERT INTO resources
                    (uuid, title, author, language, shelf_location, resource_type, tags, file_path, is_available)
@@ -668,7 +668,25 @@ def serve_admin():
 def open_browser():
     webbrowser.open('http://192.168.0.20:5000')
 
+cameranum=0
+camera2.start_camera_worker(cameranum)   # once, at startup — guard against Flask's
+                                 # debug reloader starting it twice
 
+@app.route('/api/camera/stream')
+def camera_stream():
+    return Response(camera2.generate_mjpeg(),
+                     mimetype='multipart/x-mixed-replace; boundary=frame')
+
+@app.route('/api/camera/capture', methods=['POST'])
+def camera_capture():
+    jpeg = camera2.get_latest_frame_jpeg()
+    if jpeg is None:
+        return jsonify(success=False, message='Kamera görüntüsü alınamadı.')
+    try:
+        return jsonify(success=True, **camera2.analyze_book_cover(jpeg))
+    except Exception as e:
+        return jsonify(success=False, message=str(e))
+    
 def detect_text_encoding(path):
     """Find an encoding that can read the whole file without errors.
 

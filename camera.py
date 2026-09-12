@@ -41,10 +41,6 @@ from google import genai
 
 client = genai.Client(api_key="AQ.Ab8RN6LQZcmdhC_Dh0e3XQSq5wjUGg3boH6dTHwrBhwtgVTtPA")
 
-from google import genai
-
-client = genai.Client(api_key="AQ.Ab8RN6LQZcmdhC_Dh0e3XQSq5wjUGg3boH6dTHwrBhwtgVTtPA")
-
 interaction = client.models.generate_content(
   model="models/gemini-3.8-flash",
   contents= " what do you see in this photo"
@@ -54,11 +50,10 @@ print(interaction)
 
 
 """
-AQ.Ab8RN6LQZcmdhC_Dh0e3XQSq5wjUGg3boH6dTHwrBhwtgVTtPA
 
 curl "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent" \
   -H 'Content-Type: application/json' \
-  -H 'X-goog-api-key: AQ.Ab8RN6LQZcmdhC_Dh0e3XQSq5wjUGg3boH6dTHwrBhwtgVTtPA' \
+  -H 'X-goog-api-key: AQ.jkkghjlgjhjlgl' \
   -X POST \
   -d '{
     "contents": [
