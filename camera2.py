@@ -19,9 +19,12 @@ def start_camera_worker(device_num=0):
     if _worker_started:
         return
     _cap = cv2.VideoCapture(device_num, cv2.CAP_DSHOW)  # DSHOW backend avoids the MSMF "can't grab frame" bug on Windows
+    #if not _cap.isOpened():
+        #raise RuntimeError(f"Camera {device_num} could not be opened")
     if not _cap.isOpened():
-        raise RuntimeError(f"Camera {device_num} could not be opened")
-
+        print(f"[camera] WARNING: camera {device_num} could not be opened — /api/camera routes will fail until it's available")
+        return
+    
     def _reader():
         global _latest_frame, _cap
         fail_count = 0

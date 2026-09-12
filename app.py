@@ -668,10 +668,10 @@ def serve_admin():
 def open_browser():
     webbrowser.open('http://192.168.0.20:5000')
 
-cameranum=0
-camera2.start_camera_worker(cameranum)   # once, at startup — guard against Flask's
-                                 # debug reloader starting it twice
-
+cameranum = 0
+if os.environ.get('WERKZEUG_RUN_MAIN') or not app.debug:
+    camera2.start_camera_worker(cameranum)
+    
 @app.route('/api/camera/stream')
 def camera_stream():
     return Response(camera2.generate_mjpeg(),
