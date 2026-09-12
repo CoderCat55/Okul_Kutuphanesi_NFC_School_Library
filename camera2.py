@@ -4,6 +4,7 @@ import json
 import threading
 from google import genai
 from google.genai import types
+import time
 
 # ---- shared camera state ----------------------------------------------
 _cap = None
@@ -17,18 +18,26 @@ def start_camera_worker(device_num=0):
     global _cap, _worker_started
     if _worker_started:
         return
-    _cap = cv2.VideoCapture(device_num)
+    _cap = cv2.VideoCapture(device_num, cv2.CAP_DSHOW)  # DSHOW backend avoids the MSMF "can't grab frame" bug on Windows
     if not _cap.isOpened():
         raise RuntimeError(f"Camera {device_num} could not be opened")
 
     def _reader():
-        global _latest_frame
+        global _latest_frame, _cap
+        fail_count = 0
         while True:
             ret, frame = _cap.read()
             if ret:
+                fail_count = 0
                 with _frame_lock:
                     _latest_frame = frame
-
+            else:
+                fail_count += 1
+                time.sleep(0.05)  # don't spin the CPU / hammer the driver while it's failing
+                if fail_count > 30:  # ~1.5s of failures -> device likely dropped, reopen it
+                    _cap.release()
+                    _cap = cv2.VideoCapture(device_num, cv2.CAP_DSHOW)
+                    fail_count = 0
     threading.Thread(target=_reader, daemon=True).start()
     _worker_started = True
 

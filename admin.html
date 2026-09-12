@@ -445,7 +445,7 @@
     </div>
 
     <div class="sep"></div>
-    <button class="btn btn-primary" onclick="saveBasili()">💾 Kaydet</button>
+    <button class="btn btn-primary" onclick="saveAutobook()">💾 Kaydet</button>
   </div>
 
 
@@ -866,6 +866,61 @@ document.addEventListener('keydown', function(e) {
     });
   }
 
+  function saveAutobook() {
+  const ad = document.getElementById('aAd').value.trim();
+  const yazar = document.getElementById('aYazar').value.trim();
+  const dil = document.querySelector('input[name="aDil"]:checked').value;
+  const raf = document.getElementById('aRaf').value.trim();
+  const nfcTag = document.getElementById('aNfcTag').value.trim();
+
+  if (!ad || !yazar) {
+    alert('Lütfen zorunlu alanları doldurun.');
+    return;
+  }
+
+  const tagGrid = document.getElementById('aTagGrid');
+  const tags = Array.from(tagGrid.querySelectorAll('.tag-check input:checked'))
+                .map(cb => cb.nextElementSibling.textContent.trim());
+  const customTagInput = document.getElementById('aCustomTag');
+  const customTags = customTagInput.value.trim().split(',').map(t => t.trim()).filter(t => t.length > 0);
+  const allTags = [...tags, ...customTags].join(',');
+
+  const data = {
+    title: ad,
+    author: yazar,
+    language: dil,
+    shelf_location: raf,
+    tags: allTags,
+    resource_type: 'physical',
+    nfc_tag: nfcTag || null
+  };
+
+  fetch('/api/resources/physical', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      alert('Basılı kaynak kaydedildi: ' + ad);
+      document.getElementById('aAd').value = '';
+      document.getElementById('aYazar').value = '';
+      document.getElementById('aRaf').value = '';
+      document.getElementById('aNfcTag').value = '';
+      document.getElementById('aCustomTag').value = '';
+      const checks = document.getElementById('aTagGrid').querySelectorAll('.tag-check input');
+      checks.forEach(cb => cb.checked = false);
+      loadActivities();
+    } else {
+      alert('Kaydetme başarısız: ' + data.message);
+    }
+  })
+  .catch(error => {
+    alert('Bir hata oluştu: ' + error.message);
+    console.error('Error:', error);
+  });
+}
   function saveBasili() {
     const ad = document.getElementById('bAd').value.trim();
     const yazar = document.getElementById('bYazar').value.trim();
@@ -873,7 +928,9 @@ document.addEventListener('keydown', function(e) {
     const raf = document.getElementById('bRaf').value.trim();
     const nfcTag = document.getElementById('bNfcTag').value.trim();
 
-    if (!ad || !yazar || !raf) {
+    // "raf" (Raf Yeri) is intentionally NOT required.
+    // To make it required again later, just add `|| !raf` back into the condition below.
+    if (!ad || !yazar) {
       alert('Lütfen zorunlu alanları doldurun.');
       return;
     }
