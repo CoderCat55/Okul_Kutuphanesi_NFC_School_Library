@@ -670,6 +670,13 @@ def serve_admin():
 def open_browser():
     webbrowser.open('http://192.168.0.20:5000')
 
+@app.route('/api/camera/stop')
+def camera_stop():
+    try:
+        camera2.stop_camera
+        return jsonify(success=True)
+    except RuntimeError as e:
+        return jsonify(success=False, message=str(e)), 500
 
 @app.route('/api/camera/start')
 def camera_start():
@@ -806,4 +813,4 @@ if __name__ == '__main__':
     # absence here ensures the browser opens exactly once.
     if not os.environ.get('WERKZEUG_RUN_MAIN'):
         Timer(1, open_browser).start()
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5000,threaded=True)

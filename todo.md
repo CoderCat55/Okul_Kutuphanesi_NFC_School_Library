@@ -1,6 +1,4 @@
-Kamerayı seçmek ve başlatmak için bazı kodlar yazdım amacı ne benim amacımı nalayabildin mi diye öğrnemeliyim ve syntax hatalarını düzeltmeni istiyorum
-
-rafyeri ve etiket required olmamalı ve ben bunu değiştirebilmellyim yani kodun yanında bir yorum bırak
+kamera seçebiliyorum ama live feedi göremiyorum neden sorun ne?
 
 do not overcomplicate things but just fix the code. After reviewing code and undertanding how to solve this problem. ell me where to change and what to change specifically 
 how this would be implemented to current system , which parts should be changed which parts should be added and where.

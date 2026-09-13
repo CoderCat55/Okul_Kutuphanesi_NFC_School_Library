@@ -12,36 +12,46 @@ cap = None
 latest_frame = None
 frame_lock = threading.Lock()
 worker_started = False
+current_device = None
+cap_lock = threading.Lock()
 
 def start_camera_worker(device_num):
-    """Call once at server startup. One thread owns the device; the
-    stream and the capture endpoint both just read the latest frame."""
-    global cap, worker_started
-    if worker_started:
+    global cap, worker_started, current_device
+    if worker_started and current_device == device_num:
         return
-    cap = cv2.VideoCapture(device_num, cv2.CAP_DSHOW)  # DSHOW backend avoids the MSMF "can't grab frame" bug on Windows
-    if not cap.isOpened():
-        raise RuntimeError(f"Camera {device_num} could not be opened")
+    with cap_lock:
+        if cap is not None:
+            cap.release()
+        cap = cv2.VideoCapture(device_num, cv2.CAP_DSHOW)
+        if not cap.isOpened():
+            raise RuntimeError(f"Camera {device_num} could not be opened")
+        current_device = device_num
+    if not worker_started:
+        threading.Thread(target=reader, args=(device_num,), daemon=True).start()
+        worker_started = True
 
 def reader(device_num):
     global latest_frame, cap
     fail_count = 0
     while True:
-        ret, frame = cap.read()
+        try:
+            with cap_lock:
+                ret, frame = cap.read()
+        except cv2.error:
+            ret = False
         if ret:
             fail_count = 0
             with frame_lock:
                 latest_frame = frame
         else:
             fail_count += 1
-            time.sleep(0.05)  # don't spin the CPU / hammer the driver while it's failing
-            if fail_count > 30:  # ~1.5s of failures -> device likely dropped, reopen it
-                cap.release()
-                cap = cv2.VideoCapture(device_num, cv2.CAP_DSHOW)
+            time.sleep(0.05)
+            if fail_count > 30:
+                with cap_lock:
+                    cap.release()
+                    cap = cv2.VideoCapture(current_device, cv2.CAP_DSHOW)
                 fail_count = 0
-    threading.Thread(target=_reader, daemon=True).start()
-    worker_started = True
-
+                
 def get_latest_frame():
     with frame_lock:
         return None if latest_frame is None else latest_frame.copy()

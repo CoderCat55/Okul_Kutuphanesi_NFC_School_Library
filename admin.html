@@ -498,7 +498,7 @@
   <div class="panel autobook">
   <h2>Otomatik Kitap Ekle</h2>
   <div class="autobook-layout">
-    <button onclick="stopcamera()">Stop</button>
+    <button onclick="stopcamera()" style="width:30px;">Stop</button>
     <div class="autobook-camera">
       <select name="cameraiddropdown" id="cars" onchange="selectCamera(this.value)">
         <option value=0>0.</option>
@@ -590,6 +590,9 @@
  * BOTH bTagGrid and dTagGrid, so physical and digital resources
  * always see the same list of tags.
  */
+function stopcamera(){
+  fetch(`/api/camera/stop`)
+}
 function selectCamera(deviceNum) {
   fetch(`/api/camera/start?device=${deviceNum}`)
     .then(r => r.json())
