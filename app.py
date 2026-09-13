@@ -671,7 +671,17 @@ def open_browser():
 cameranum = 0
 if os.environ.get('WERKZEUG_RUN_MAIN') or not app.debug:
     camera2.start_camera_worker(cameranum)
-    
+
+@app.route('/api/camera/list')
+def camera_list():
+    return jsonify(cameras=camera2.list_cameras(), current=camera2.get_current_index())
+
+@app.route('/api/camera/select', methods=['POST'])
+def camera_select():
+    idx = int(request.get_json(force=True).get('index', 0))
+    ok = camera2.switch_camera(idx)
+    return jsonify(success=ok)
+
 @app.route('/api/camera/stream')
 def camera_stream():
     return Response(camera2.generate_mjpeg(),

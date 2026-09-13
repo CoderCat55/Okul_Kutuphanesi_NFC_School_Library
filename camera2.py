@@ -11,14 +11,16 @@ _cap = None
 _latest_frame = None
 _frame_lock = threading.Lock()
 _worker_started = False
+_current_index = 0
 
-def start_camera_worker(device_num=0):
+def start_camera_worker(device_num):
     """Call once at server startup. One thread owns the device; the
     stream and the capture endpoint both just read the latest frame."""
     global _cap, _worker_started
     if _worker_started:
         return
     _cap = cv2.VideoCapture(device_num, cv2.CAP_DSHOW)  # DSHOW backend avoids the MSMF "can't grab frame" bug on Windows
+    _current_index = device_num
     #if not _cap.isOpened():
         #raise RuntimeError(f"Camera {device_num} could not be opened")
     if not _cap.isOpened():
@@ -39,7 +41,7 @@ def start_camera_worker(device_num=0):
                 time.sleep(0.05)  # don't spin the CPU / hammer the driver while it's failing
                 if fail_count > 30:  # ~1.5s of failures -> device likely dropped, reopen it
                     _cap.release()
-                    _cap = cv2.VideoCapture(device_num, cv2.CAP_DSHOW)
+                    _cap = cv2.VideoCapture(_current_index, cv2.CAP_DSHOW)
                     fail_count = 0
     threading.Thread(target=_reader, daemon=True).start()
     _worker_started = True
@@ -89,3 +91,43 @@ def analyze_book_cover(image_bytes):
         config=types.GenerateContentConfig(response_mime_type="application/json"),
     )
     return json.loads(response.text)
+
+def list_cameras(max_check=6):
+    """Probe indices 0..max_check and report which ones can actually be opened.
+    Names come from pygrabber if installed (pip install pygrabber), else generic labels."""
+    names = []
+    try:
+        from pygrabber.dshow_graph import FilterGraph
+        names = FilterGraph().get_input_devices()
+    except Exception:
+        pass
+
+    cameras = []
+    for idx in range(max_check):
+        if idx == _current_index:
+            # already held open by the reader thread — report it without probing
+            cameras.append({'index': idx, 'name': names[idx] if idx < len(names) else f'Kamera {idx}'})
+            continue
+        cap = cv2.VideoCapture(idx, cv2.CAP_DSHOW)
+        if cap.isOpened():
+            cameras.append({'index': idx, 'name': names[idx] if idx < len(names) else f'Kamera {idx}'})
+        cap.release()
+    return cameras
+
+def get_current_index():
+    return _current_index
+
+def switch_camera(new_index):
+    global _cap, _current_index
+    new_cap = cv2.VideoCapture(new_index, cv2.CAP_DSHOW)
+    if not new_cap.isOpened():
+        new_cap.release()
+        return False
+    global _latest_frame
+    with _frame_lock:
+        old_cap = _cap
+        _cap = new_cap
+        _current_index = new_index
+        _latest_frame = None  # drop stale frame from the old device
+    old_cap.release()
+    return True
