@@ -500,7 +500,7 @@
   <div class="autobook-layout">
     <div class="autobook-camera">
       <select id="cameraSelect" onchange="switchCamera()"></select>
-      <img id="autobookStream" src="/api/camera/stream" alt="Kamera görüntüsü" />
+      <img id="autobookStream" alt="Kamera görüntüsü" />
     </div>
     <div class="autobook-col">
       <div class="form-row">
@@ -610,7 +610,8 @@ function switchCamera() {
   })
   .then(r => r.json())
   .then(data => {
-    if (!data.success) alert('Bu kameraya geçilemedi.');
+    if (!data.success) { alert('Bu kameraya geçilemedi.'); return; }
+      document.getElementById('autobookStream').src = '/api/camera/stream?t=' + Date.now();
   });
 }
 

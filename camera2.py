@@ -55,6 +55,7 @@ def generate_mjpeg():
     while True:
         frame = _get_latest_frame()
         if frame is None:
+            time.sleep(0.05)
             continue
         ok, buf = cv2.imencode('.jpg', frame)
         if ok:
@@ -131,3 +132,9 @@ def switch_camera(new_index):
         _latest_frame = None  # drop stale frame from the old device
     old_cap.release()
     return True
+
+def start_or_switch_camera(index):
+    if not _worker_started:
+        start_camera_worker(index)
+        return _cap is not None and _cap.isOpened()
+    return switch_camera(index)

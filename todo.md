@@ -3,6 +3,9 @@ Görüntü işlenemedi: 401 UNAUTHENTICATED. {'error': {'code': 401, 'message': 
 
 I tried updating the library bu tit didnt work
 
+also [ WARN:1@13.936] global cap.cpp:477 cv::VideoCapture::open VIDEOIO(DSHOW): backend is generally available but can't be used to capture by index
+
+vokay so the problem might be solved instead of automatically selecting a camera then automatically starting live stream live stream can start after user selects camera so we avoid the error?
 
 do not overcomplicate things but just fix the code. After reviewing code and undertanding how to solve this problem. ell me where to change and what to change specifically 
 how this would be implemented to current system , which parts should be changed which parts should be added and where.
