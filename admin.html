@@ -498,9 +498,11 @@
   <div class="panel autobook">
   <h2>Otomatik Kitap Ekle</h2>
   <div class="autobook-layout">
-    <button onclick="stopcamera()" style="width:30px;">Stop</button>
+    
     <div class="autobook-camera">
+      <button onclick="stopcamera()" style="width:30px;">Stop</button>
       <select name="cameraiddropdown" id="cars" onchange="selectCamera(this.value)">
+        <option value=None>None</option>
         <option value=0>0.</option>
         <option value=1>1.</option>
         <option value=2>2.</option>
@@ -911,18 +913,16 @@ document.addEventListener('keydown', function(e) {
   const dil = document.querySelector('input[name="aDil"]:checked').value;
   const raf = document.getElementById('aRaf').value.trim();
   const nfcTag = document.getElementById('aNfcTag').value.trim();
-
-  if (!ad || !yazar ||!tags) {
-    alert('Lütfen zorunlu alanları doldurun.');
-    return;
-  }
-
   const tagGrid = document.getElementById('aTagGrid');
   const tags = Array.from(tagGrid.querySelectorAll('.tag-check input:checked'))
                 .map(cb => cb.nextElementSibling.textContent.trim());
   const customTagInput = document.getElementById('aCustomTag');
   const customTags = customTagInput.value.trim().split(',').map(t => t.trim()).filter(t => t.length > 0);
   const allTags = [...tags, ...customTags].join(',');
+  if (!ad || !yazar ||!tags) {
+    alert('Lütfen zorunlu alanları doldurun.');
+    return;
+  }
 
   const data = {
     title: ad,
