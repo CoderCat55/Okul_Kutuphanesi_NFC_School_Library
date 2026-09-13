@@ -505,7 +505,7 @@
         <option value=1>1.</option>
         <option value=2>2.</option>
       </select>
-      <img id="autobookStream" src="/api/camera/stream" alt="Kamera görüntüsü" />
+      <img id="autobookStream" alt="Kamera görüntüsü" />
     </div>
     <div class="autobook-col">
       <div class="form-row">
@@ -590,14 +590,35 @@
  * BOTH bTagGrid and dTagGrid, so physical and digital resources
  * always see the same list of tags.
  */
+let pollTimer = null;
+function startPolling() {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(() => {
+    fetch('/api/camera/frame')
+      .then(r => r.ok ? r.blob() : null)
+      .then(blob => {
+        if (!blob) return;
+        const img = document.getElementById('autobookStream');
+        const oldUrl = img.src;
+        img.src = URL.createObjectURL(blob);
+        if (oldUrl.startsWith('blob:')) URL.revokeObjectURL(oldUrl);
+      });
+  }, 200); // 5 fps, adjust to taste
+}
+
 function stopcamera(){
-  fetch(`/api/camera/stop`)
+  fetch(`/api/camera/stop`);
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
 }
 function selectCamera(deviceNum) {
   fetch(`/api/camera/start?device=${deviceNum}`)
     .then(r => r.json())
     .then(data => {
-      if (!data.success) alert('Kamera başlatılamadı: ' + data.message);
+      if (!data.success) {
+        alert('Kamera başlatılamadı: ' + data.message);
+        return;
+      }
+      startPolling();
     });
 }
 

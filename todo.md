@@ -1,4 +1,5 @@
-kamera seçebiliyorum ama live feedi göremiyorum neden sorun ne?
+make default camera num to none not 0
+edit the layout
 
 do not overcomplicate things but just fix the code. After reviewing code and undertanding how to solve this problem. ell me where to change and what to change specifically 
 how this would be implemented to current system , which parts should be changed which parts should be added and where.

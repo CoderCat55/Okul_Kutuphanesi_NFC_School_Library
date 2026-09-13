@@ -9,27 +9,21 @@ import API
 
 # ---- shared camera state ----------------------------------------------
 cap = None
-latest_frame = None
-frame_lock = threading.Lock()
-worker_started = False
+#latest_frame = None
+#frame_lock = threading.Lock()
+#worker_started = False
 current_device = None
-cap_lock = threading.Lock()
+#cap_lock = threading.Lock()
 
 def start_camera_worker(device_num):
-    global cap, worker_started, current_device
-    if worker_started and current_device == device_num:
-        return
-    with cap_lock:
-        if cap is not None:
-            cap.release()
-        cap = cv2.VideoCapture(device_num, cv2.CAP_DSHOW)
-        if not cap.isOpened():
-            raise RuntimeError(f"Camera {device_num} could not be opened")
-        current_device = device_num
-    if not worker_started:
-        threading.Thread(target=reader, args=(device_num,), daemon=True).start()
-        worker_started = True
-
+    global cap, current_device
+    if cap is not None:
+        cap.release()
+    cap = cv2.VideoCapture(device_num, cv2.CAP_DSHOW)
+    if not cap.isOpened():
+        raise RuntimeError(f"Camera {device_num} could not be opened")
+    current_device = device_num
+"""
 def reader(device_num):
     global latest_frame, cap
     fail_count = 0
@@ -51,13 +45,14 @@ def reader(device_num):
                     cap.release()
                     cap = cv2.VideoCapture(current_device, cv2.CAP_DSHOW)
                 fail_count = 0
-                
+   """           
+"""
 def get_latest_frame():
     with frame_lock:
         return None if latest_frame is None else latest_frame.copy()
 
 def generate_mjpeg():
-    """For the live-feed endpoint (left half of the autobook div)."""
+    #For the live-feed endpoint (left half of the autobook div).
     while True:
         frame = get_latest_frame()
         if frame is None:
@@ -66,17 +61,21 @@ def generate_mjpeg():
         if ok:
             yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n'
                    + buf.tobytes() + b'\r\n')
-
-def get_latest_frame_jpeg():
-    """For the capture button — no extra device access needed."""
-    frame = get_latest_frame()
-    if frame is None:
+"""
+def get_frame_jpeg():
+    if cap is None:
+        return None
+    ret, frame = cap.read()
+    if not ret:
         return None
     ok, buf = cv2.imencode('.jpg', frame)
     return buf.tobytes() if ok else None
 
 def stop_camera():
-    print("stop cameraaa")
+    global cap
+    if cap is not None:
+        cap.release()
+        cap = None
 
 # ---- Gemini -------------------------------------------------------------
 # Set this in your shell / systemd unit / .env — never in source:

@@ -673,7 +673,7 @@ def open_browser():
 @app.route('/api/camera/stop')
 def camera_stop():
     try:
-        camera2.stop_camera
+        camera2.stop_camera()
         return jsonify(success=True)
     except RuntimeError as e:
         return jsonify(success=False, message=str(e)), 500
@@ -688,13 +688,16 @@ def camera_start():
     except RuntimeError as e:
         return jsonify(success=False, message=str(e)), 500
 
-@app.route('/api/camera/stream')
-def camera_stream():
-    return Response(camera2.generate_mjpeg(),mimetype='multipart/x-mixed-replace; boundary=frame')
+@app.route('/api/camera/frame')
+def camera_frame():
+    jpeg = camera2.get_frame_jpeg()
+    if jpeg is None:
+        return '', 204
+    return Response(jpeg, mimetype='image/jpeg')
 
 @app.route('/api/camera/capture', methods=['POST'])
 def camera_capture():
-    jpeg = camera2.get_latest_frame_jpeg()
+    jpeg = camera2.get_frame_jpeg()
     if jpeg is None:
         return jsonify(success=False, message='Kamera görüntüsü alınamadı.')
     try:
