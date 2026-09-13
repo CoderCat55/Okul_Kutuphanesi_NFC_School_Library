@@ -445,7 +445,7 @@
     </div>
 
     <div class="sep"></div>
-    <button class="btn btn-primary" onclick="saveAutobook()">💾 Kaydet</button>
+    <button class="btn btn-primary" onclick="saveBasili()">💾 Kaydet</button>
   </div>
 
 
@@ -498,7 +498,13 @@
   <div class="panel autobook">
   <h2>Otomatik Kitap Ekle</h2>
   <div class="autobook-layout">
+    <button onclick="stopcamera()">Stop</button>
     <div class="autobook-camera">
+      <select name="cameraiddropdown" id="cars" onchange="selectCamera(this.value)">
+        <option value=0>0.</option>
+        <option value=1>1.</option>
+        <option value=2>2.</option>
+      </select>
       <img id="autobookStream" src="/api/camera/stream" alt="Kamera görüntüsü" />
     </div>
     <div class="autobook-col">
@@ -522,7 +528,7 @@
         <div class="tag-hint">Birden fazla tag için virgülle ayırın: "Kimya, 9. Sınıf, Olimpiyat"</div>
       </div>
       <div class="sep"></div>
-      <button class="btn btn-primary" onclick="saveBasili()">💾 Kaydet</button>
+      <button class="btn btn-primary" onclick="saveAutobook()">💾 Kaydet</button>
     </div>
     <div class="autobook-col">
       <div class="form-row">
@@ -584,6 +590,13 @@
  * BOTH bTagGrid and dTagGrid, so physical and digital resources
  * always see the same list of tags.
  */
+function selectCamera(deviceNum) {
+  fetch(`/api/camera/start?device=${deviceNum}`)
+    .then(r => r.json())
+    .then(data => {
+      if (!data.success) alert('Kamera başlatılamadı: ' + data.message);
+    });
+}
 
  function captureAndFillBasili() {
   fetch('/api/camera/capture', { method: 'POST' })
@@ -866,6 +879,8 @@ document.addEventListener('keydown', function(e) {
     });
   }
 
+  // "raf" (Raf Yeri) is intentionally NOT required.
+  // To make it required again later, add `|| !raf` back into the condition below.
   function saveAutobook() {
   const ad = document.getElementById('aAd').value.trim();
   const yazar = document.getElementById('aYazar').value.trim();
@@ -873,7 +888,7 @@ document.addEventListener('keydown', function(e) {
   const raf = document.getElementById('aRaf').value.trim();
   const nfcTag = document.getElementById('aNfcTag').value.trim();
 
-  if (!ad || !yazar) {
+  if (!ad || !yazar ||!tags) {
     alert('Lütfen zorunlu alanları doldurun.');
     return;
   }

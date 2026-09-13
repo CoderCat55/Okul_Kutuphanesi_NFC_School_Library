@@ -1,4 +1,4 @@
-Problem: I cant see the live feed eror:[ WARN:1@53.314] global cap_msmf.cpp:1816 CvCapture_MSMF::grabFrame videoio(MSMF): can't grab frame. Error: -1072875772
+Kamerayı seçmek ve başlatmak için bazı kodlar yazdım amacı ne benim amacımı nalayabildin mi diye öğrnemeliyim ve syntax hatalarını düzeltmeni istiyorum
 
 rafyeri ve etiket required olmamalı ve ben bunu değiştirebilmellyim yani kodun yanında bir yorum bırak
 

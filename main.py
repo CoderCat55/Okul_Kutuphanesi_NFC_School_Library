@@ -146,7 +146,9 @@ def download_resource(resource_id):
 @app.route('/api/resources/physical', methods=['POST'])
 def add_physical_resource():
     data = request.get_json()
-    required_fields = ['title', 'author', 'language', 'shelf_location']
+    # "shelf_location" (Raf Yeri) is intentionally NOT required.
+    # To make it required again, add 'shelf_location' back into this list.
+    required_fields = ['title', 'author', 'language','tags']
     for field in required_fields:
         if field not in data or not data[field]:
             return jsonify({'success': False, 'message': f'{field} is required'}), 400
@@ -668,14 +670,20 @@ def serve_admin():
 def open_browser():
     webbrowser.open('http://192.168.0.20:5000')
 
-cameranum=0
-camera2.start_camera_worker(cameranum)   # once, at startup — guard against Flask's
-                                 # debug reloader starting it twice
+
+@app.route('/api/camera/start')
+def camera_start():
+    # ?device=N lets the admin panel dropdown pick which camera to open
+    cameranum = request.args.get('device', default=0, type=int)
+    try:
+        camera2.start_camera_worker(cameranum)
+        return jsonify(success=True)
+    except RuntimeError as e:
+        return jsonify(success=False, message=str(e)), 500
 
 @app.route('/api/camera/stream')
 def camera_stream():
-    return Response(camera2.generate_mjpeg(),
-                     mimetype='multipart/x-mixed-replace; boundary=frame')
+    return Response(camera2.generate_mjpeg(),mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route('/api/camera/capture', methods=['POST'])
 def camera_capture():
