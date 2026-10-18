@@ -624,24 +624,52 @@ function selectCamera(deviceNum) {
     });
 }
 
- function captureAndFillBasili() {
-  fetch('/api/camera/capture', { method: 'POST' })
-    .then(r => r.json())
-    .then(data => {
-      if (!data.success) {
-        alert('Görüntü işlenemedi: ' + (data.message || 'Bilinmeyen hata'));
-        return;
-      }
-      document.getElementById('aAd').value = data.title || '';
-      document.getElementById('aYazar').value = data.author || '';
-      const lang = (data.language || 'TR').toUpperCase();
-      const radio = document.querySelector(`input[name="aDil"][value="${lang}"]`);
-      if (radio) radio.checked = true;
-    })
-    .catch(err => {
-      alert('Bir hata oluştu: ' + err.message);
-      console.error(err);
-    });
+let pollPaused = false;
+
+function pausePolling() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  pollPaused = true;
+}
+
+function resumePolling() {
+  pollPaused = false;
+  startPolling();
+}
+
+function captureAndFillBasili() {
+  if (pollPaused) return;               // already capturing, ignore double click
+
+  const btn = document.querySelector('button[onclick*="captureAndFillBasili"]');
+  const oldText = btn ? btn.textContent : '';
+
+  // 1. Stop the preview poller
+  pausePolling();
+
+  // 2. Give the last in-flight /api/camera/frame request time to finish
+  //    (it may already be mid cap.read() on the server)
+  setTimeout(() => {
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Okunuyor...'; }
+
+    fetch('/api/camera/capture', { method: 'POST' })
+      .then(r => r.json())
+      .then(data => {
+        if (!data.success) {
+          alert('Görüntü işlenemedi:\n' + (data.message || 'Bilinmeyen hata'));
+          return;
+        }
+        document.getElementById('aAd').value = data.title || '';
+        document.getElementById('aYazar').value = data.author || '';
+        const lang = (data.language || 'TR').toUpperCase();
+        const radio = document.querySelector(`input[name="aDil"][value="${lang}"]`);
+        if (radio) radio.checked = true;
+        else console.warn('Unknown language from model:', data.language);
+      })
+      .catch(err => alert('Bağlantı hatası:\n' + err.message))
+      .finally(() => {
+        if (btn) { btn.disabled = false; btn.textContent = oldText; }
+        resumePolling();               // 3. Restart the preview
+      });
+  }, 300);                             // 300ms is enough; the request is fast
 }
 
 function loadTagCatalog() {

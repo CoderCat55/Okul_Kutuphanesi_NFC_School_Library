@@ -2,9 +2,11 @@ import cv2
 import os
 import json
 import threading
-from google import genai
-from google.genai import types
+import base64
+import re
+from openai import OpenAI
 import time
+import numpy as np
 import API
 
 # ---- shared camera state ----------------------------------------------
@@ -13,59 +15,24 @@ cap = None
 #frame_lock = threading.Lock()
 #worker_started = False
 current_device = None
-#cap_lock = threading.Lock()
+cap_lock = threading.Lock()
 
 def start_camera_worker(device_num):
     global cap, current_device
-    if cap is not None:
-        cap.release()
-    cap = cv2.VideoCapture(device_num, cv2.CAP_DSHOW)
-    if not cap.isOpened():
-        raise RuntimeError(f"Camera {device_num} could not be opened")
-    current_device = device_num
-"""
-def reader(device_num):
-    global latest_frame, cap
-    fail_count = 0
-    while True:
-        try:
-            with cap_lock:
-                ret, frame = cap.read()
-        except cv2.error:
-            ret = False
-        if ret:
-            fail_count = 0
-            with frame_lock:
-                latest_frame = frame
-        else:
-            fail_count += 1
-            time.sleep(0.05)
-            if fail_count > 30:
-                with cap_lock:
-                    cap.release()
-                    cap = cv2.VideoCapture(current_device, cv2.CAP_DSHOW)
-                fail_count = 0
-   """           
-"""
-def get_latest_frame():
-    with frame_lock:
-        return None if latest_frame is None else latest_frame.copy()
+    with cap_lock:                          # <-- add
+        if cap is not None:
+            cap.release()
+        cap = cv2.VideoCapture(device_num, cv2.CAP_DSHOW)
+        if not cap.isOpened():
+            raise RuntimeError(f"Camera {device_num} could not be opened")
+        current_device = device_num
 
-def generate_mjpeg():
-    #For the live-feed endpoint (left half of the autobook div).
-    while True:
-        frame = get_latest_frame()
-        if frame is None:
-            continue
-        ok, buf = cv2.imencode('.jpg', frame)
-        if ok:
-            yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n'
-                   + buf.tobytes() + b'\r\n')
-"""
 def get_frame_jpeg():
-    if cap is None:
-        return None
-    ret, frame = cap.read()
+    with cap_lock:                          # <-- add
+        if cap is None:
+            return None
+        ret, frame = cap.read()
+    # ---- lock released here ----
     if not ret:
         return None
     ok, buf = cv2.imencode('.jpg', frame)
@@ -73,29 +40,54 @@ def get_frame_jpeg():
 
 def stop_camera():
     global cap
-    if cap is not None:
-        cap.release()
-        cap = None
+    with cap_lock:                          # <-- add
+        if cap is not None:
+            cap.release()
+            cap = None
 
-# ---- Gemini -------------------------------------------------------------
-# Set this in your shell / systemd unit / .env — never in source:
-#   export GEMINI_API_KEY="your-new-key"
-#client = genai.Client()  # reads GEMINI_API_KEY from the environment
-import API 
-client = genai.Client(api_key=API.apikey)
+client = OpenAI(base_url=API.freellm_url, api_key=API.freellm_key, timeout=200)
 
 _PROMPT = (
     'Bu görsel bir kitap kapağı. Sadece şu JSON ile cevap ver, başka hiçbir '
-    'şey yazma: {"title": "...", "author": "...", "language": "TR|EN|DE"}'
+    'şey yazma: {"title": "...", "author": "...", "language" alanı şu üç değerden biri olmalı: "TR", "EN", "DE".\n'
+    'TR = Türkçe kitap, EN = İngilizce kitap, DE = Almanca kitap.\n'
+    'Emin değilsen "TR" yaz. Kitabın adı ve yazarı kapağın üzerinde '
+    'görünen dildedir; bu dili bildir.'
 )
 
+def _parse_json(text):
+    # some free models wrap JSON in ```json fences or add extra text
+    text = re.sub(r"```(?:json)?", "", text).strip()
+    m = re.search(r"\{.*\}", text, re.DOTALL)
+    return json.loads(m.group(0) if m else text)
+
 def analyze_book_cover(image_bytes):
-    response = client.models.generate_content(
-        model="gemini-3.7-flash",  # double-check current name at ai.google.dev/gemini-api/docs/models
-        contents=[
-            types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"),
-            _PROMPT,
-        ],
-        config=types.GenerateContentConfig(response_mime_type="application/json"),
-    )
-    return json.loads(response.text)
+    img = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
+    h, w = img.shape[:2]
+    s = 1024 / max(h, w)
+    if s < 1:
+        img = cv2.resize(img, (int(w * s), int(h * s)), interpolation=cv2.INTER_AREA)
+    image_bytes = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 85])[1].tobytes()
+    #shringked image 
+    
+    b64 = base64.b64encode(image_bytes).decode()
+    try:
+        resp = client.chat.completions.create(
+            model=API.MODEL,   # your vision profile name; "auto" also works but may pick a text-only model
+            temperature=0,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": _PROMPT},
+                    {"type": "image_url",
+                    "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
+                ],
+            }],
+        )
+    except Exception as e:
+        raise RuntimeError(
+            f"Ollama'ya bağlanılamadı ({API.freellm_url}). "
+            f"'ollama serve' çalışıyor mu? Model '{API.MODEL}' yüklü mü? "
+            f"Orijinal hata: {e}"
+        ) from e
+    return _parse_json(resp.choices[0].message.content)

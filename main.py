@@ -181,7 +181,9 @@ def add_physical_resource():
                (uuid, title, author, language, shelf_location, resource_type, tags, nfc_tag, is_available)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)''',
             (resource_uuid, data['title'], data['author'], data['language'],
-             data['shelf_location'], 'physical', tags, nfc_tag)
+             data('shelf_location'),'physical', tags, nfc_tag)
+             #data('shelf_location') data.get('shelf_location')   # returns None if missin
+             #data['shelf_location']       # raises KeyError if missing
         )
         conn.commit()
         resource_id = cursor.lastrowid
@@ -243,7 +245,7 @@ def add_digital_resource():
             # Log activity
             cursor.execute(
                 'INSERT INTO activity_log (action, details) VALUES (?, ?)',
-                (f'Added digital resource: {title}')
+                (f'Added digital resource: {title}', f'UUID: {resource_uuid}')
             )
             conn.commit()
 
