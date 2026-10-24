@@ -48,11 +48,10 @@ def stop_camera():
 client = OpenAI(base_url=API.freellm_url, api_key=API.freellm_key, timeout=200)
 
 _PROMPT = (
-    'Bu görsel bir kitap kapağı. Sadece şu JSON ile cevap ver, başka hiçbir '
-    'şey yazma: {"title": "...", "author": "...", "language" alanı şu üç değerden biri olmalı: "TR", "EN", "DE".\n'
-    'TR = Türkçe kitap, EN = İngilizce kitap, DE = Almanca kitap.\n'
-    'Emin değilsen "TR" yaz. Kitabın adı ve yazarı kapağın üzerinde '
-    'görünen dildedir; bu dili bildir.'
+    'Book cover. Reply ONLY with JSON: '
+    '{"title":"...","author":"...","language":"TR|EN|DE"}. '
+    'Language = the one visible on the cover, not the original. '
+    'If unsure: "TR".'
 )
 
 def _parse_json(text):
@@ -64,10 +63,10 @@ def _parse_json(text):
 def analyze_book_cover(image_bytes):
     img = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
     h, w = img.shape[:2]
-    s = 1024 / max(h, w)
+    s = 640 / max(h, w)  #changed from 1024 for faster results
     if s < 1:
         img = cv2.resize(img, (int(w * s), int(h * s)), interpolation=cv2.INTER_AREA)
-    image_bytes = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 85])[1].tobytes()
+    image_bytes = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 75])[1].tobytes() #used to be 85
     #shringked image 
     
     b64 = base64.b64encode(image_bytes).decode()
@@ -75,6 +74,8 @@ def analyze_book_cover(image_bytes):
         resp = client.chat.completions.create(
             model=API.MODEL,   # your vision profile name; "auto" also works but may pick a text-only model
             temperature=0,
+            max_tokens=120, 
+            extra_body={"keep_alive": "24h"}, 
             messages=[{
                 "role": "user",
                 "content": [
