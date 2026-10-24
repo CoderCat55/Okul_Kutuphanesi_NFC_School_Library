@@ -8,12 +8,21 @@ from openai import OpenAI
 import time
 import numpy as np
 import API
+from PIL import Image
+import pytesseract
+#teserract downloader for windows https://github.com/UB-Mannheim/tesseract/wiki
+#https://pypi.org/project/pytesseract/
+
+pytesseract.pytesseract.tesseract_cmd = (
+    r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+)
+# If you don't have tesseract executable in your PATH, include the following:
+#pytesseract.pytesseract.tesseract_cmd = r'<full_path_to_your_tesseract_executable>'
+# Example tesseract_cmd = r'C:\Program Files (x86)\Tesseract-OCR\tesseract'
+
 
 # ---- shared camera state ----------------------------------------------
 cap = None
-#latest_frame = None
-#frame_lock = threading.Lock()
-#worker_started = False
 current_device = None
 cap_lock = threading.Lock()
 
@@ -48,7 +57,9 @@ def stop_camera():
 client = OpenAI(base_url=API.freellm_url, api_key=API.freellm_key, timeout=200)
 
 _PROMPT = (
-    'Book cover. Reply ONLY with JSON: '
+    'You are extracting book-cover details from OCR text. '
+    'Use only the supplied text. Do not invent missing information. '
+    'Return only valid json like this exactly:'
     '{"title":"...","author":"...","language":"TR|EN|DE"}. '
     'Language = the one visible on the cover, not the original. '
     'If unsure: "TR".'
@@ -61,34 +72,57 @@ def _parse_json(text):
     return json.loads(m.group(0) if m else text)
 
 def analyze_book_cover(image_bytes):
-    img = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
-    h, w = img.shape[:2]
-    s = 640 / max(h, w)  #changed from 1024 for faster results
-    if s < 1:
-        img = cv2.resize(img, (int(w * s), int(h * s)), interpolation=cv2.INTER_AREA)
-    image_bytes = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 75])[1].tobytes() #used to be 85
-    #shringked image 
-    
-    b64 = base64.b64encode(image_bytes).decode()
+    img = cv2.imdecode(
+        np.frombuffer(image_bytes, np.uint8),
+        cv2.IMREAD_COLOR,
+    )
+    if img is None:
+        raise RuntimeError("Could not decode the camera image.")
+    # Keep enough detail for OCR, while limiting very large camera frames.
+    height, width = img.shape[:2]
+    max_side = 1200
+    scale = max_side / max(height, width)
+    if scale < 1:
+        img = cv2.resize(
+            img,
+            (int(width * scale), int(height * scale)),
+            interpolation=cv2.INTER_AREA,
+        )
+    # Tesseract works on grayscale text; OpenCV is used here for preprocessing.
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     try:
-        resp = client.chat.completions.create(
-            model=API.MODEL,   # your vision profile name; "auto" also works but may pick a text-only model
+        ocr_text = pytesseract.image_to_string(
+            gray,
+            lang="tur+eng+deu",
+            config="--oem 3 --psm 11",
+        ).strip()
+        print("Tesseract OCR:", repr(ocr_text))
+    except Exception as e:
+        raise RuntimeError(
+            "Tesseract OCR failed. Check that Tesseract and the tur, eng, "
+            f"and deu language data are installed. Error: {e}"
+        ) from e
+    if not ocr_text:
+        raise RuntimeError(
+            "Tesseract could not read text from this cover. "
+            "Try adjusting the camera or lighting."
+        )
+    try:
+        response = client.chat.completions.create(
+            model=API.MODEL,
             temperature=0,
-            max_tokens=120, 
-            extra_body={"keep_alive": "24h"}, 
-            messages=[{
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": _PROMPT},
-                    {"type": "image_url",
-                    "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
-                ],
-            }],
+            max_tokens=120,
+            extra_body={"keep_alive": "24h"},
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"{_PROMPT}\n\nOCR text:\n{ocr_text}",
+                }
+            ],
         )
     except Exception as e:
         raise RuntimeError(
-            f"Ollama'ya bağlanılamadı ({API.freellm_url}). "
-            f"'ollama serve' çalışıyor mu? Model '{API.MODEL}' yüklü mü? "
-            f"Orijinal hata: {e}"
+            f"Could not reach the text model ({API.MODEL}). "
+            f"Check the Ollama service and model. Original error: {e}"
         ) from e
-    return _parse_json(resp.choices[0].message.content)
+    return _parse_json(response.choices[0].message.content or "")
